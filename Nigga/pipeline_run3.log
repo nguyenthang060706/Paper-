@@ -1,0 +1,259 @@
+﻿2026-06-29 01:07:21,814 [INFO] ======================================================================
+2026-06-29 01:07:21,814 [INFO] LAYER 1 ΓÇö NLP Single-Action
+2026-06-29 01:07:21,814 [INFO] ======================================================================
+2026-06-29 01:07:23,761 [INFO] Loading hackaprompt/hackaprompt-dataset...
+2026-06-29 01:07:24,409 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/hackaprompt/hackaprompt-dataset/resolve/main/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:07:24,410 [WARNING] Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+python : Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate 
+limits and faster downloads.
+At line:1 char:1
++ python build_dataset.py --output-dir ./output 2>&1 | Out-File -Encodi ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: You ar...ster downloads.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-06-29 01:07:24,692 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/hackaprompt/hackaprompt-dataset/resolve/25b87fbedfb86840abaf8cd09af7a029208a971a/hackaprompt-dataset.py "HTTP/1.1 401 Unauthorized"
+2026-06-29 01:07:24,692 [ERROR] Failed to load hackaprompt: Dataset 'hackaprompt/hackaprompt-dataset' is a gated dataset on the Hub. You must be authenticated to access it.
+2026-06-29 01:07:24,692 [INFO] Loading neuralchemy/Prompt-injection-dataset...
+2026-06-29 01:07:24,968 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/neuralchemy/Prompt-injection-dataset/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-29 01:07:24,976 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/neuralchemy/Prompt-injection-dataset/7d70432dfcf47a821612cbf9d34e9d9e3ad20e75/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:07:25,243 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/neuralchemy/Prompt-injection-dataset/resolve/7d70432dfcf47a821612cbf9d34e9d9e3ad20e75/Prompt-injection-dataset.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:07:25,947 [INFO] HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/neuralchemy/Prompt-injection-dataset/neuralchemy/Prompt-injection-dataset.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:07:26,231 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/neuralchemy/Prompt-injection-dataset/revision/7d70432dfcf47a821612cbf9d34e9d9e3ad20e75 "HTTP/1.1 200 OK"
+2026-06-29 01:07:26,504 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/neuralchemy/Prompt-injection-dataset/resolve/7d70432dfcf47a821612cbf9d34e9d9e3ad20e75/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-06-29 01:07:27,047 [INFO] HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=neuralchemy/Prompt-injection-dataset "HTTP/1.1 200 OK"
+2026-06-29 01:07:27,442 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/neuralchemy/Prompt-injection-dataset/tree/7d70432dfcf47a821612cbf9d34e9d9e3ad20e75/core?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-06-29 01:07:27,804 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/neuralchemy/Prompt-injection-dataset/tree/7d70432dfcf47a821612cbf9d34e9d9e3ad20e75?recursive=false&expand=false "HTTP/1.1 200 OK"
+2026-06-29 01:07:28,150 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/neuralchemy/Prompt-injection-dataset/resolve/7d70432dfcf47a821612cbf9d34e9d9e3ad20e75/dataset_infos.json "HTTP/1.1 404 Not Found"
+2026-06-29 01:07:28,505 [INFO]   Raw rows: 4,391
+2026-06-29 01:07:28,506 [INFO]   Columns: ['text', 'label', 'category', 'source', 'severity', 'group_id', 'augmented', 'tags']
+2026-06-29 01:07:28,506 [INFO]   Using text_col='text', label_col='label'
+2026-06-29 01:07:28,759 [INFO]   Final neuralchemy: 4,391 total (2,650 malicious, 1,741 benign)
+2026-06-29 01:07:28,761 [INFO] Loading prodnull/prompt-injection-repo-dataset...
+2026-06-29 01:07:29,138 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/prodnull/prompt-injection-repo-dataset/resolve/main/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:07:29,416 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/prodnull/prompt-injection-repo-dataset/resolve/6c56b897ee4a328fb4f41f4b0d334f5d2db4482a/prompt-injection-repo-dataset.py "HTTP/1.1 401 Unauthorized"
+2026-06-29 01:07:29,417 [ERROR]   Failed to load prodnull (gated dataset): Dataset 'prodnull/prompt-injection-repo-dataset' is a gated dataset on the Hub. You must be authenticated to access it.
+2026-06-29 01:07:29,417 [ERROR]   Provide --hf-token with accepted gating conditions
+2026-06-29 01:07:29,422 [INFO] 
+Layer 1 raw total: 4,391
+2026-06-29 01:07:29,422 [INFO] Dedup Step 1: Exact-match (SHA256)...
+2026-06-29 01:07:29,448 [INFO]   4,391 ΓåÆ 4,391 (dropped 0)
+2026-06-29 01:07:29,449 [INFO] Dedup Step 2: MinHash LSH (threshold=0.85)...
+2026-06-29 01:07:29,450 [WARNING]   datasketch not installed, skipping MinHash dedup
+2026-06-29 01:07:29,450 [INFO] Dedup Step 3: Cross-dataset overlap check...
+2026-06-29 01:07:29,451 [INFO]   Only 1 dataset, skipping cross-check
+2026-06-29 01:07:29,451 [INFO] Balancing Layer 1...
+2026-06-29 01:07:29,453 [INFO]   Current: 2,650 mal (60.4%) / 1,741 ben
+2026-06-29 01:07:29,453 [INFO]   Already within 5% of target (60%), no balancing needed
+2026-06-29 01:07:29,453 [INFO] Validating schema for Layer 1...
+2026-06-29 01:07:29,461 [INFO]   [OK] Stats: {
+  "total_rows": 4391,
+  "malicious_count": 2650,
+  "benign_count": 1741,
+  "unique_sessions": 4391,
+  "source_datasets": {
+    "neuralchemy": "4391"
+  },
+  "malicious_ratio": 0.6035071737645183
+}
+2026-06-29 01:07:29,523 [INFO] Saved Layer 1: 4,391 rows
+2026-06-29 01:07:29,523 [INFO] 
+======================================================================
+2026-06-29 01:07:29,523 [INFO] LAYER 2 ΓÇö Tool Call Injection
+2026-06-29 01:07:29,523 [INFO] ======================================================================
+2026-06-29 01:07:29,524 [INFO] Loading microsoft/llmail-inject-challenge...
+2026-06-29 01:07:29,807 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/microsoft/llmail-inject-challenge/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-29 01:07:29,819 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/microsoft/llmail-inject-challenge/1063bdf01ec8762b812d5e06ee768a06faa5a6f7/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:07:30,110 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/microsoft/llmail-inject-challenge/resolve/1063bdf01ec8762b812d5e06ee768a06faa5a6f7/llmail-inject-challenge.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:07:30,359 [INFO] HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/microsoft/llmail-inject-challenge/microsoft/llmail-inject-challenge.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:07:30,636 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/microsoft/llmail-inject-challenge/revision/1063bdf01ec8762b812d5e06ee768a06faa5a6f7 "HTTP/1.1 200 OK"
+2026-06-29 01:07:30,929 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/microsoft/llmail-inject-challenge/resolve/1063bdf01ec8762b812d5e06ee768a06faa5a6f7/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-06-29 01:07:31,233 [INFO] HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=microsoft/llmail-inject-challenge "HTTP/1.1 200 OK"
+2026-06-29 01:07:31,535 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/microsoft/llmail-inject-challenge/tree/1063bdf01ec8762b812d5e06ee768a06faa5a6f7/data?recursive=false&expand=false "HTTP/1.1 200 OK"
+2026-06-29 01:07:31,850 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/microsoft/llmail-inject-challenge/resolve/1063bdf01ec8762b812d5e06ee768a06faa5a6f7/dataset_infos.json "HTTP/1.1 404 Not Found"
+2026-06-29 01:07:31,982 [INFO]   Processing Phase1: 370,724 rows
+2026-06-29 01:09:18,410 [INFO]   After sampling (10 per combo): 13,161
+2026-06-29 01:09:19,160 [INFO]   Processing Phase2: 90,916 rows
+2026-06-29 01:09:44,747 [INFO]   After sampling (10 per combo): 4,086
+2026-06-29 01:09:45,068 [INFO]   Final LLMail-Inject: 17,218 malicious samples
+2026-06-29 01:09:45,069 [INFO]     exfil_success=True: 1,747
+2026-06-29 01:09:45,069 [INFO]     defense_caught=True: 7,994
+2026-06-29 01:09:45,345 [INFO] Loading microsoft/BIPIA...
+2026-06-29 01:09:45,345 [INFO]   Trying: microsoft/BIPIA...
+2026-06-29 01:09:45,645 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/microsoft/BIPIA/resolve/main/README.md "HTTP/1.1 401 Unauthorized"
+2026-06-29 01:09:45,645 [WARNING]   Failed: Dataset 'microsoft/BIPIA' doesn't exist on the Hub or cannot be accessed.
+2026-06-29 01:09:45,645 [INFO]   Trying: MAlmasabi/Indirect-Prompt-Injection-BIPIA-GPT...
+2026-06-29 01:09:45,922 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/MAlmasabi/Indirect-Prompt-Injection-BIPIA-GPT/resolve/main/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:09:46,188 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/MAlmasabi/Indirect-Prompt-Injection-BIPIA-GPT/resolve/e5c8011e16ea1d621897a24473b40fd7afccbd92/Indirect-Prompt-Injection-BIPIA-GPT.py "HTTP/1.1 401 Unauthorized"
+2026-06-29 01:09:46,188 [WARNING]   Failed: Dataset 'MAlmasabi/Indirect-Prompt-Injection-BIPIA-GPT' is a gated dataset on the Hub. You must be authenticated to access it.
+2026-06-29 01:09:46,189 [INFO]   Trying: wu981526092/BIPIA...
+2026-06-29 01:09:46,453 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/wu981526092/BIPIA/resolve/main/README.md "HTTP/1.1 401 Unauthorized"
+2026-06-29 01:09:46,454 [WARNING]   Failed: Dataset 'wu981526092/BIPIA' doesn't exist on the Hub or cannot be accessed.
+2026-06-29 01:09:46,454 [INFO]   Trying: rubend18/ChatGPT-Jailbreak-Prompts...
+2026-06-29 01:09:46,728 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/rubend18/ChatGPT-Jailbreak-Prompts/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-29 01:09:46,735 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/rubend18/ChatGPT-Jailbreak-Prompts/b93e4982f8f8ad2d82c6d35e3c00d161844ad70a/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:09:47,030 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/rubend18/ChatGPT-Jailbreak-Prompts/resolve/b93e4982f8f8ad2d82c6d35e3c00d161844ad70a/ChatGPT-Jailbreak-Prompts.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:47,734 [INFO] HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/rubend18/ChatGPT-Jailbreak-Prompts/rubend18/ChatGPT-Jailbreak-Prompts.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:48,013 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/rubend18/ChatGPT-Jailbreak-Prompts/revision/b93e4982f8f8ad2d82c6d35e3c00d161844ad70a "HTTP/1.1 200 OK"
+2026-06-29 01:09:48,287 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/rubend18/ChatGPT-Jailbreak-Prompts/resolve/b93e4982f8f8ad2d82c6d35e3c00d161844ad70a/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:48,680 [INFO] HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=rubend18/ChatGPT-Jailbreak-Prompts "HTTP/1.1 200 OK"
+2026-06-29 01:09:48,965 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/rubend18/ChatGPT-Jailbreak-Prompts/tree/b93e4982f8f8ad2d82c6d35e3c00d161844ad70a/data?recursive=true&expand=false "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:49,233 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/rubend18/ChatGPT-Jailbreak-Prompts/tree/b93e4982f8f8ad2d82c6d35e3c00d161844ad70a?recursive=false&expand=false "HTTP/1.1 200 OK"
+2026-06-29 01:09:49,773 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/rubend18/ChatGPT-Jailbreak-Prompts/resolve/b93e4982f8f8ad2d82c6d35e3c00d161844ad70a/dataset_infos.json "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:49,795 [INFO]   Loaded from rubend18/ChatGPT-Jailbreak-Prompts: 79 rows
+2026-06-29 01:09:49,795 [INFO]   Columns: ['Name', 'Prompt', 'Votes', 'Jailbreak Score', 'GPT-4']
+2026-06-29 01:09:49,795 [INFO]   attack_col='None', context_col='None', task_col='None'
+C:\Users\ADMIN\Downloads\Nigga\build_dataset.py:444: Pandas4Warning: For backward compatibility, 'str' dtypes are 
+included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a 
+future version. Explicitly pass 'str' to `include` to select them, or to `exclude` to remove them and silence this 
+warning.
+See https://pandas.pydata.org/docs/user_guide/migration-3-strings.html#string-migration-select-dtypes for details on 
+how to write code that works with pandas 2 and 3.
+  text_col = df.select_dtypes(include=["object"]).columns[0]
+2026-06-29 01:09:49,797 [WARNING]   No attack column found, using 'Name' as fallback
+2026-06-29 01:09:49,800 [INFO]   Final BIPIA: 79 total (79 malicious, 0 benign)
+2026-06-29 01:09:49,803 [INFO] 
+Layer 2 raw total: 17,297
+2026-06-29 01:09:49,803 [INFO] Dedup Step 1: Exact-match (SHA256)...
+2026-06-29 01:09:50,186 [INFO]   17,297 ΓåÆ 12,206 (dropped 5,091)
+2026-06-29 01:09:50,186 [INFO] Balancing Layer 2...
+2026-06-29 01:09:50,187 [WARNING]   Only one class present (12,206 mal / 0 ben) ΓÇö cannot balance. Returning as-is.
+2026-06-29 01:09:50,187 [INFO] Validating schema for Layer 2...
+2026-06-29 01:09:50,198 [INFO]   [OK] Stats: {
+  "total_rows": 12206,
+  "malicious_count": 12206,
+  "benign_count": 0,
+  "unique_sessions": 12206,
+  "source_datasets": {
+    "llmail-inject": "12127",
+    "bipia": "79"
+  },
+  "malicious_ratio": 1.0
+}
+2026-06-29 01:09:50,500 [INFO] Saved Layer 2: 12,206 rows (parquet with metadata)
+2026-06-29 01:09:50,501 [INFO] 
+======================================================================
+2026-06-29 01:09:50,501 [INFO] LAYER 3 ΓÇö Multi-Step Sequences
+2026-06-29 01:09:50,501 [INFO] ======================================================================
+2026-06-29 01:09:50,501 [INFO] Loading ai-safety-institute/AgentHarm...
+2026-06-29 01:09:50,501 [INFO]   Loading config 'harmful', split 'train'...
+2026-06-29 01:09:50,770 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-29 01:09:50,778 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/ai-safety-institute/AgentHarm/e23b3fe60a0da9037314b88e5ee3a0c054970dad/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:09:51,050 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/AgentHarm.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:51,285 [INFO] HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/ai-safety-institute/AgentHarm/ai-safety-institute/AgentHarm.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:51,564 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/ai-safety-institute/AgentHarm/revision/e23b3fe60a0da9037314b88e5ee3a0c054970dad "HTTP/1.1 200 OK"
+2026-06-29 01:09:51,841 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:52,136 [INFO] HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=ai-safety-institute/AgentHarm "HTTP/1.1 200 OK"
+2026-06-29 01:09:52,410 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/ai-safety-institute/AgentHarm/tree/e23b3fe60a0da9037314b88e5ee3a0c054970dad/benchmark?recursive=false&expand=false "HTTP/1.1 200 OK"
+2026-06-29 01:09:52,689 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/dataset_infos.json "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:52,715 [INFO]   Loading config 'harmful', split 'test_public'...
+2026-06-29 01:09:52,993 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-29 01:09:53,001 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/ai-safety-institute/AgentHarm/e23b3fe60a0da9037314b88e5ee3a0c054970dad/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:09:53,274 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/AgentHarm.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:53,504 [INFO] HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/ai-safety-institute/AgentHarm/ai-safety-institute/AgentHarm.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:53,786 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:54,096 [INFO] HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=ai-safety-institute/AgentHarm "HTTP/1.1 200 OK"
+2026-06-29 01:09:54,395 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/dataset_infos.json "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:54,430 [INFO]     Config 'harmful' split 'test_public': 176 rows
+2026-06-29 01:09:54,430 [INFO]   Loading config 'harmless_benign', split 'train'...
+2026-06-29 01:09:54,705 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-29 01:09:54,712 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/ai-safety-institute/AgentHarm/e23b3fe60a0da9037314b88e5ee3a0c054970dad/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:09:54,984 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/AgentHarm.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:55,218 [INFO] HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/ai-safety-institute/AgentHarm/ai-safety-institute/AgentHarm.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:55,488 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:55,774 [INFO] HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=ai-safety-institute/AgentHarm "HTTP/1.1 200 OK"
+2026-06-29 01:09:56,058 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/dataset_infos.json "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:56,080 [INFO]   Loading config 'harmless_benign', split 'test_public'...
+2026-06-29 01:09:56,349 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-29 01:09:56,357 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/ai-safety-institute/AgentHarm/e23b3fe60a0da9037314b88e5ee3a0c054970dad/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:09:56,626 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/AgentHarm.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:56,860 [INFO] HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/ai-safety-institute/AgentHarm/ai-safety-institute/AgentHarm.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:57,133 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:57,432 [INFO] HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=ai-safety-institute/AgentHarm "HTTP/1.1 200 OK"
+2026-06-29 01:09:57,723 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/ai-safety-institute/AgentHarm/resolve/e23b3fe60a0da9037314b88e5ee3a0c054970dad/dataset_infos.json "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:57,765 [INFO]     Config 'harmless_benign' split 'test_public': 176 rows
+2026-06-29 01:09:57,766 [INFO]   Total rows across configs: 352
+2026-06-29 01:09:57,766 [INFO]   Columns: ['id', 'id_original', 'detailed_prompt', 'hint_included', 'name', 'category', 'prompt', 'target_functions', 'grading_function', '_is_harmful', '_config']
+2026-06-29 01:09:57,766 [INFO]   Tool-related columns: ['target_functions', 'grading_function']
+2026-06-29 01:09:57,766 [INFO]   Label-related columns: ['category', '_is_harmful']
+2026-06-29 01:09:57,766 [INFO]   Task-related columns: ['id', 'id_original', 'detailed_prompt', 'name', 'prompt']
+2026-06-29 01:09:57,795 [INFO]   Final AgentHarm: 352 records across 176 sessions (176 malicious)
+2026-06-29 01:09:57,795 [INFO] Loading trace-commons/agent-traces...
+2026-06-29 01:09:58,077 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/trace-commons/agent-traces/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-29 01:09:58,089 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/trace-commons/agent-traces/112ebd4d03ce852b00e935d523107c3d0c9a65bf/README.md "HTTP/1.1 200 OK"
+2026-06-29 01:09:58,360 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/trace-commons/agent-traces/resolve/112ebd4d03ce852b00e935d523107c3d0c9a65bf/agent-traces.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:58,591 [INFO] HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/trace-commons/agent-traces/trace-commons/agent-traces.py "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:58,911 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/trace-commons/agent-traces/revision/112ebd4d03ce852b00e935d523107c3d0c9a65bf "HTTP/1.1 200 OK"
+2026-06-29 01:09:59,178 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/trace-commons/agent-traces/resolve/112ebd4d03ce852b00e935d523107c3d0c9a65bf/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-06-29 01:09:59,476 [INFO] HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=trace-commons/agent-traces "HTTP/1.1 200 OK"
+2026-06-29 01:09:59,759 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/trace-commons/agent-traces/tree/112ebd4d03ce852b00e935d523107c3d0c9a65bf/data?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-06-29 01:10:00,034 [INFO] HTTP Request: GET https://huggingface.co/api/datasets/trace-commons/agent-traces/tree/112ebd4d03ce852b00e935d523107c3d0c9a65bf?recursive=false&expand=false "HTTP/1.1 200 OK"
+2026-06-29 01:10:00,305 [INFO] HTTP Request: HEAD https://huggingface.co/datasets/trace-commons/agent-traces/resolve/112ebd4d03ce852b00e935d523107c3d0c9a65bf/dataset_infos.json "HTTP/1.1 404 Not Found"
+2026-06-29 01:10:00,338 [INFO]   Processing split 'train': 30 rows
+2026-06-29 01:10:01,237 [INFO]   Final agent-traces: 8,526 records across 27 sessions (all benign)
+2026-06-29 01:10:01,253 [INFO] Loading synthetic multi-step scenarios...
+2026-06-29 01:10:01,263 [INFO]   Main scenarios: 895 records (200 malicious sessions, 30 benign sessions)
+2026-06-29 01:10:01,264 [INFO]   Obfuscation variants: 161 records (40 sessions)
+2026-06-29 01:10:01,269 [INFO] Saved L3 obfuscation: 161 rows (separate file)
+2026-06-29 01:10:01,269 [INFO] 
+Layer 3 raw total: 9,773
+2026-06-29 01:10:01,425 [INFO]   L3 session-level dedup: 9,773 -> 9,509 (removed 132 duplicate sessions)
+2026-06-29 01:10:01,425 [INFO] Validating schema for Layer 3...
+2026-06-29 01:10:01,454 [INFO]   [OK] Stats: {
+  "total_rows": 9509,
+  "malicious_count": 244,
+  "benign_count": 9265,
+  "unique_sessions": 301,
+  "source_datasets": {
+    "agent-traces": "8526",
+    "synthetic": "895",
+    "agentharm": "88"
+  },
+  "malicious_ratio": 0.025659901146282468
+}
+2026-06-29 01:10:01,655 [INFO] Saved Layer 3: 9,509 rows
+2026-06-29 01:10:01,655 [INFO] 
+======================================================================
+2026-06-29 01:10:01,655 [INFO] COMBINED DATASET
+2026-06-29 01:10:01,655 [INFO] ======================================================================
+2026-06-29 01:10:02,161 [INFO] Validating schema for Full Combined...
+2026-06-29 01:10:02,234 [INFO]   [OK] Stats: {
+  "total_rows": 26106,
+  "malicious_count": 15100,
+  "benign_count": 11006,
+  "unique_sessions": 16898,
+  "source_datasets": {
+    "llmail-inject": "12127",
+    "agent-traces": "8526",
+    "neuralchemy": "4391",
+    "synthetic": "895",
+    "agentharm": "88",
+    "bipia": "79"
+  },
+  "malicious_ratio": 0.5784110932352716
+}
+2026-06-29 01:10:02,234 [INFO] 
+======================================================================
+2026-06-29 01:10:02,234 [INFO] FINAL SUMMARY
+2026-06-29 01:10:02,234 [INFO] ======================================================================
+2026-06-29 01:10:02,235 [INFO] Total records: 26,106
+2026-06-29 01:10:02,237 [INFO]   Malicious: 15,100
+2026-06-29 01:10:02,238 [INFO]   Benign:    11,006
+2026-06-29 01:10:02,241 [INFO]   Ratio:     57.8% malicious
+2026-06-29 01:10:02,241 [INFO] 
+By source_dataset:
+2026-06-29 01:10:02,245 [INFO]   llmail-inject: 12,127
+2026-06-29 01:10:02,246 [INFO]   agent-traces: 8,526
+2026-06-29 01:10:02,246 [INFO]   neuralchemy: 4,391
+2026-06-29 01:10:02,246 [INFO]   synthetic: 895
+2026-06-29 01:10:02,246 [INFO]   agentharm: 88
+2026-06-29 01:10:02,246 [INFO]   bipia: 79
+2026-06-29 01:10:02,246 [INFO] 
+By attack_type:
+2026-06-29 01:10:02,253 [INFO]   malicious_single: 14,856
+2026-06-29 01:10:02,253 [INFO]   benign: 10,431
+2026-06-29 01:10:02,253 [INFO]   malicious_multistep: 819
+2026-06-29 01:10:02,254 [INFO] 
+Validation report saved: output\validation_report.json
+2026-06-29 01:10:02,254 [INFO] 
+[DONE] Pipeline complete!
