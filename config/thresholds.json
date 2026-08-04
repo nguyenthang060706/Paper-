@@ -1,0 +1,24 @@
+{
+  "action_risk_model": {
+    "BLOCK": 0.6429,
+    "REVIEW": 0.5577
+  },
+  "prompt_risk_model": {
+    "BLOCK": 0.6229,
+    "REVIEW": 0.5385
+  },
+  "voting_aggregator": {
+    "MONITOR": 40,
+    "REVIEW": 68,
+    "DENY": 82,
+    "QUARANTINE": 90
+  },
+  "context_sanitizer": {
+    "PASS": 0.3,
+    "WRAP_UNTRUSTED": 0.65,
+    "STRIP_AND_WRAP": 0.85
+  },
+  "provenance_tagging": {
+    "enabled": false
+  }
+}

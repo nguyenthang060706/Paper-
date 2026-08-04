@@ -1,0 +1,6 @@
+﻿{
+    "action_risk_model":  {
+                              "REVIEW":  0.4,
+                              "BLOCK":  0.58
+                          }
+}

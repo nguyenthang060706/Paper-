@@ -1,0 +1,7 @@
+# EVO-PCA settings
+ollama_model: "gemma3:4b"
+ollama_timeout: 15.0
+firewall_mode: "STRICT"
+ollama_base_url: "http://localhost:11434"
+semantic_delta_threshold: 0.65
+sequence_risk_gain: 1.2

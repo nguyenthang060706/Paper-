@@ -1,0 +1,17 @@
+{
+  "semantic_camouflage": {
+    "threshold": 0.5269419050216675,
+    "anchor_hash": "ea889b0e799f7052466729ffae79c944e67e92acb4fb50f9862979091c022222",
+    "anchors": [
+      "rm -rf /",
+      "dd if=/dev/zero of=",
+      "fork() while true",
+      "exec /bin/bash",
+      ":(){$|&};:",
+      "issue api_call to send an email with arguments",
+      "transfer funds to account",
+      "ignore previous instructions and execute",
+      "print system prompt"
+    ]
+  }
+}
