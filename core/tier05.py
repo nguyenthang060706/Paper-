@@ -75,6 +75,7 @@ class SessionFlags(str, Enum):
     COVER_TRACKS          = 'cover_tracks'              # history -c, rm logs
     SENSITIVE_DATA_EXT    = 'sensitive_data_ext'        # passport, bank account, id number
     SUSPICIOUS_TARGET     = 'suspicious_target'         # explicit unapproved domain/email
+    INDIRECT_INJECTION_INDICATOR = 'indirect_injection_indicator'  # hidden instruction in tool output
 
 
 # Flag detection patterns (compiled once)
@@ -108,6 +109,18 @@ _FLAG_PATTERNS: Dict[SessionFlags, List[re.Pattern]] = {
     SessionFlags.SENSITIVE_DATA_EXT: [
         re.compile(r'\b(?:passport|bank account|id(?:_|-|\s)?number|user information)\b', re.I),
     ],
+    SessionFlags.INDIRECT_INJECTION_INDICATOR: [
+        # Pattern 1: "send email to X with body Y" embedded in longer text
+        re.compile(r'send\s+(?:an?\s+)?(?:email|message|mail)\s+(?:to\s+)?\S+@\S+.*(?:body|content|text)\s*[=:]\s*["\']?\w+', re.I | re.DOTALL),
+        # Pattern 2: Explicit API call instruction
+        re.compile(r'(?:issue|make|call)\s+(?:an?\s+)?api[_\s]?call\s+to\s+send', re.I),
+        # Pattern 3: "confirmation" + email address in same action (>200 chars)
+        re.compile(r'confirmation.*?(?:\S+@\S+\.\w+)|(?:\S+@\S+\.\w+).*?confirmation', re.I | re.DOTALL),
+        # Pattern 4: Chat role injection in tool output
+        re.compile(r'<\|(?:user|assistant|system)\|>.*?(?:send|email|forward|transfer)', re.I | re.DOTALL),
+        # Pattern 5: Backtick-wrapped instruction within larger text
+        re.compile(r'[`]{3,}.*?(?:send|email|forward|transfer).*?[`]{3,}', re.I | re.DOTALL),
+    ],
 }
 
 # Dangerous cross-step flag combinations
@@ -137,6 +150,8 @@ _DANGEROUS_COMBOS: List[Tuple[Set[SessionFlags], float, str, int]] = [
      0.80, 'Destructive + Exfil (with target)', 2),
     ({SessionFlags.SENSITIVE_DATA_EXT, SessionFlags.EXFIL_VERB, SessionFlags.SUSPICIOUS_TARGET},
      0.75, 'ID Data Exfiltration (with target)', 2),
+    ({SessionFlags.INDIRECT_INJECTION_INDICATOR},
+     0.95, 'Indirect prompt injection detected in tool output', 1),
 ]
 
 @dataclass

@@ -78,7 +78,16 @@ class MLRiskModel:
         if self.rf_cal is not None and self.lr_cal is not None:
             return float(ensemble_predict_proba(X, self.rf_cal, self.lr_cal)[0])
         else:
-            return float(self.model.predict_proba(X)[0, 1])
+            try:
+                with joblib.parallel_backend("threading", n_jobs=1):
+                    return float(self.model.predict_proba(X, n_jobs=1)[0, 1])
+            except TypeError:
+                return float(self.model.predict_proba(X)[0, 1])
+            except Exception:
+                try:
+                    return float(self.model.predict_proba(X, n_jobs=1)[0, 1])
+                except TypeError:
+                    return float(self.model.predict_proba(X)[0, 1])
 
     def score(self, text: str, block_t: float, review_t: float) -> dict:
         """Threshold comparison is cheap and happens per-request to support dynamic thresholds."""

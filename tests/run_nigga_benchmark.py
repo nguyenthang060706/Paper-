@@ -122,6 +122,7 @@ import logging
 import base64
 import json
 import math
+import gc
 import joblib
 from enum import Enum
 from collections import defaultdict
@@ -133,6 +134,8 @@ from datetime import datetime, timedelta
 
 warnings.filterwarnings('ignore')
 warnings.filterwarnings('always', category=RuntimeWarning, module='__main__')
+warnings.filterwarnings('ignore', message='.*sklearn.utils.parallel.delayed.*', category=UserWarning)
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 random.seed(42)
 np.random.seed(42)
 
@@ -4052,8 +4055,9 @@ class EVOPCA_V36_Agent:
         # [PATCH-4] Ã„ÂÃ¡Â»Âc trÃ†Â°Ã¡Â»â€ºc model metadata Ã„â€˜Ã¡Â»Æ’ lÃ¡ÂºÂ¥y threshold Ã„â€˜ÃƒÂºng cho FPR manager.
         # NÃ¡ÂºÂ¿u model chÃ†Â°a tÃ¡Â»â€œn tÃ¡ÂºÂ¡i, fallback vÃ¡Â»Â 0.70/0.58 nhÃ†Â° cÃ…Â©.
         try:
-            _pre_clf = MLClassifier(str(self.model_path))
-            _init_thr = _pre_clf.recommended_threshold if _pre_clf.recommended_threshold > 0.1 else 0.70
+            _md = _load_model_metadata(str(self.model_path))
+            _rec_thr = float(_md.get('recommended_threshold', 0.70))
+            _init_thr = _rec_thr if _rec_thr > 0.1 else 0.70
             _min_thr  = max(0.40, _init_thr - 0.15)  # min_threshold = recommended - 15%
         except Exception:
             _init_thr, _min_thr = 0.70, 0.58
@@ -4066,9 +4070,8 @@ class EVOPCA_V36_Agent:
         try:
             # [PATCH-4] Ã„ÂÃ¡Â»Âc recommended_threshold tÃ¡Â»Â« metadata model
             # thay vÃƒÂ¬ hardcode 0.70 Ã¢â‚¬- mÃƒÂ´ hÃƒÂ¬nh mÃ¡Â»â€ºi cÃƒÂ³ threshold = 0.5436.
-            _tmp_clf = MLClassifier(str(self.model_path))
-            _model_threshold = _tmp_clf.recommended_threshold
-            _ml_init_threshold = _model_threshold if _model_threshold > 0.1 else 0.70
+            _tmp_clf = None  # [MEM-FIX-3] Reuse _init_thr from cached metadata above
+            _ml_init_threshold = _init_thr
             logger.info(f'[PATCH-4] ml_threshold tÃ¡Â»Â« model metadata: {_ml_init_threshold:.4f}')
             self._core = EVOPCAClassifier(
                 model_path=str(self.model_path),
@@ -4081,6 +4084,7 @@ class EVOPCA_V36_Agent:
             self._ml_loaded = True
             print(f'{self.NAME}: ML model loaded from {self.model_path} '
                   f'(threshold={_ml_init_threshold:.4f})')
+            gc.collect()  # [MEM-FIX] Free temp objects after model init
         except Exception as exc:
             raise RuntimeError(
                 f'{self.NAME}: real EVO-PCA ML model failed to load. '
@@ -4633,16 +4637,15 @@ if _MODEL_PATH is None:
 _MODEL_PATH = _MODEL_PATH.resolve()
 os.environ['EVO_PCA_MODEL_PATH'] = str(_MODEL_PATH)
 
-_meta = joblib.load(_MODEL_PATH)
-if isinstance(_meta, dict):
-    _MODEL_RECOMMENDED_THRESHOLD = float(_meta.get('recommended_threshold', 0.58))
-    _MODEL_MIN_THRESHOLD          = float(_meta.get('min_threshold', 0.58))
-else:
-    _MODEL_RECOMMENDED_THRESHOLD = 0.58
-    _MODEL_MIN_THRESHOLD          = 0.58
+# [MEM-FIX-1] Use cached metadata loader instead of full joblib.load()
+# Avoids loading entire model dict just to read 2 threshold floats.
+_meta = _load_model_metadata(str(_MODEL_PATH))
+_MODEL_RECOMMENDED_THRESHOLD = float(_meta.get('recommended_threshold', 0.58))
+_MODEL_MIN_THRESHOLD          = float(_meta.get('min_threshold', 0.58))
 print(f'[INFO] Model found: {_MODEL_PATH}')
 print(f'[INFO] recommended_threshold={_MODEL_RECOMMENDED_THRESHOLD}, min_threshold={_MODEL_MIN_THRESHOLD}')
 del _meta
+gc.collect()
 
 
 N_TEMPLATES = 6   # disclosed in CSV attrs and chart title
@@ -4991,7 +4994,6 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
         seen_sessions = set()
         fp_ss = tn_ss = 0   # steady-state FP / TN (post warm-up)
 
-        import concurrent.futures
         import threading
         
         # Group dataset by session
@@ -5000,6 +5002,8 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
             session_to_records[record.get('session_id', 'default')].append(record)
             
         def process_session(sid, records):
+            """[MEM-FIX-4] Removed nested ThreadPoolExecutor — call evaluate directly.
+            The inner executor created a thread per record, multiplying memory usage."""
             session_results = []
             sim_time = datetime.now() - timedelta(days=1)
             for record in records:
@@ -5009,9 +5013,7 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
                 rec['action'] = '' if raw_action is None else str(raw_action)
                 rec['_sim_time'] = sim_time
                 try:
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                        future = executor.submit(model.evaluate, rec)
-                        out = future.result(timeout=120)
+                    out = model.evaluate(rec)
                     session_results.append((rec, out))
                 except Exception as e:
                     import traceback
@@ -5022,20 +5024,24 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
 
         import psutil
         process = psutil.Process()
-        pbar = tqdm(total=len(dataset), desc="Evaluating (Parallel)")
-        pbar_lock = threading.Lock()
+        pbar = tqdm(total=len(dataset), desc="Evaluating (Sequential — Memory Safe)")
         
+        # [MEM-FIX-5] Sequential processing: max_workers=1 instead of 4.
+        # Reduces peak RAM from ~4x model copies to ~1x.
+        # Also runs gc.collect() every 50 sessions to free intermediate objects.
         all_results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [executor.submit(process_session, sid, recs) for sid, recs in session_to_records.items()]
-            for future in concurrent.futures.as_completed(futures):
-                sid, session_results = future.result()
-                all_results.extend([x for x in session_results if x[1] is not None])
-                with pbar_lock:
-                    pbar.update(len(session_results))
-                    ram_mb = process.memory_info().rss / (1024 * 1024)
-                    pbar.set_postfix({'RAM': f'{ram_mb:.0f}MB'})
+        _gc_counter = 0
+        for sid, recs in session_to_records.items():
+            _, session_results = process_session(sid, recs)
+            all_results.extend([x for x in session_results if x[1] is not None])
+            pbar.update(len(session_results))
+            ram_mb = process.memory_info().rss / (1024 * 1024)
+            pbar.set_postfix({'RAM': f'{ram_mb:.0f}MB'})
+            _gc_counter += 1
+            if _gc_counter % 50 == 0:
+                gc.collect()
         pbar.close()
+        gc.collect()  # Final cleanup after all sessions
 
         # Sort all_results to ensure deterministic aggregation
         all_results.sort(key=lambda x: (x[0].get('session_id', ''), x[0].get('step_num', 1)))
@@ -5197,13 +5203,27 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
     df.attrs['warmup_sessions'] = WARMUP_SESSIONS
     return df
 
+
+def _get_nigga_dataset_path():
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    default_path = os.path.join(project_root, 'Nigga', 'output', 'evo_pca_full.jsonl')
+    dataset_path = os.environ.get('EVO_PCA_DATASET_PATH', default_path)
+    if not os.path.exists(dataset_path):
+        raise FileNotFoundError(
+            f"Dataset file not found: {dataset_path}. "
+            f"Set EVO_PCA_DATASET_PATH or place dataset under {default_path}"
+        )
+    return dataset_path
+
+
 def main():
     import json, random
     dataset = []
-    with open("D:/DEMO_GROUP_1/Nigga/output/evo_pca_5k_sampled_fixed.jsonl", "r", encoding="utf-8") as f:
+    dataset_path = _get_nigga_dataset_path()
+    with open(dataset_path, 'r', encoding='utf-8') as f:
         for line in f:
             dataset.append(json.loads(line))
-    print("Loaded " + str(len(dataset)) + " records from Nigga dataset.")
+    print(f"Loaded {len(dataset)} records from Nigga dataset at {dataset_path}.")
     all_sids = set(r.get("session_id") for r in dataset)
     malicious_sids = set(r.get("session_id") for r in dataset if r.get("attack_type") in ("malicious_single", "malicious_multistep"))
     session_rate = len(malicious_sids) / len(all_sids) if all_sids else 0.0
@@ -5215,16 +5235,32 @@ def main():
     print(summary_df.T.to_string())
     print("=" * 80)
 
-if __name__ == '__main__':
-    main()
+    # Save benchmark results to CSV and JSON
+    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+    os.makedirs(output_dir, exist_ok=True)
+    csv_out = os.path.join(output_dir, 'benchmark_results.csv')
+    json_out = os.path.join(output_dir, 'benchmark_results.json')
+    summary_df.T.to_csv(csv_out, encoding='utf-8')
+    summary_df.to_json(json_out, indent=2, force_ascii=False)
+    print(f"\n[OUTPUT] Benchmark results saved to:\n  - CSV:  {csv_out}\n  - JSON: {json_out}\n")
+
+# [MEM-FIX-6] Moved run_egress_benchmark() definition BEFORE the __name__ guard,
+# and moved the call INSIDE the guard. Previously it ran at module-level,
+# loading another UnifiedFirewallPipeline (~100MB+) unconditionally.
 def run_egress_benchmark():
     import json, time, os
     from core.pipeline import UnifiedFirewallPipeline
-# from models.security.advanced_heuristics import Canonicalizer
     pipeline = UnifiedFirewallPipeline(use_synthetic_iat=True)
     records = []
     try:
-        with open("D:/DEMO_GROUP_1/Legacy_Benchmarks/output/evo_pca_11k_balanced.jsonl", "r", encoding="utf-8") as f:
+        egress_path = os.environ.get(
+            'EVO_PCA_EGRESS_DATASET_PATH',
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         'Nigga', 'output', 'evo_pca_11k_balanced.jsonl')
+        )
+        if not os.path.exists(egress_path):
+            raise FileNotFoundError(f"Egress dataset not found at {egress_path}")
+        with open(egress_path, 'r', encoding='utf-8') as f:
             for line in f:
                 records.append(json.loads(line))
     except Exception as e:
@@ -5238,7 +5274,6 @@ def run_egress_benchmark():
     t0 = time.time()
     
     fp_count = 0
-    # Process benign in batch
     benign_texts = [r["action"] for r in benign]
     benign_results = pipeline.v61.model_b.process_batch(benign_texts, tool_name="benchmark")
     for res in benign_results:
@@ -5264,5 +5299,24 @@ def run_egress_benchmark():
     print(f"Avg Latency: {(latency / len(records) * 1000):.2f} ms")
     print("=" * 80)
 
-run_egress_benchmark()
+    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+    os.makedirs(output_dir, exist_ok=True)
+    egress_out = os.path.join(output_dir, 'egress_benchmark_results.json')
+    with open(egress_out, 'w', encoding='utf-8') as f:
+        json.dump({
+            "fpr_pct": round(fpr, 2),
+            "tpr_pct": round(tpr, 2),
+            "avg_latency_ms": round(latency / len(records) * 1000, 2),
+            "total_benign": len(benign),
+            "total_malicious": len(malicious)
+        }, f, indent=2)
+    print(f"[OUTPUT] Egress benchmark results saved to: {egress_out}\n")
 
+    # Cleanup pipeline after egress benchmark
+    del pipeline
+    gc.collect()
+
+
+if __name__ == '__main__':
+    main()
+    run_egress_benchmark()

@@ -63,6 +63,26 @@ def _is_quoted_tool_result(action: str) -> bool:
     return False
 
 
+def _extract_instruction_segments(text: str) -> list[str]:
+    """Extract likely instruction segments from long text for separate scanning."""
+    if len(text) < 300:
+        return []
+    
+    segments = []
+    # Extract sentences with imperative verbs
+    imperative_re = re.compile(
+        r'(?:^|\.\s+|\n)([^.]*?\b(?:send|forward|email|transfer|upload|execute|run|'
+        r'please\s+(?:send|forward|do)|you\s+(?:must|should|need\s+to))\b[^.]*\.?)',
+        re.IGNORECASE | re.MULTILINE
+    )
+    for m in imperative_re.finditer(text):
+        seg = m.group(1).strip()
+        if 20 < len(seg) < 500:
+            segments.append(seg)
+    
+    return segments
+
+
 class UnifiedFirewallPipeline:
     """
     Orchestrator chung điều phối cả 3 tầng bảo mật:
@@ -182,6 +202,11 @@ class UnifiedFirewallPipeline:
             # will flag it as an anomalous command. We evaluate it using the prompt model (text) instead.
             v61_action_type = "prompt" if skip_rce else action_type
             
+            # --- LONG TEXT HEURISTIC ---
+            segments = []
+            if len(action) > 500:
+                segments = _extract_instruction_segments(action)
+            
             v61_res = self.v61.check_action(
                 action,
                 tier05_decision=t05_decision_str,
@@ -192,6 +217,25 @@ class UnifiedFirewallPipeline:
                 adaptive_threshold=self.fpr_manager.adaptive_threshold,
                 force_review=force_review
             )
+
+            # Check segments if original action passed
+            if v61_res.get("decision", "ALLOW") != "BLOCK" and segments:
+                for seg in segments:
+                    seg_res = self.v61.check_action(
+                        seg,
+                        tier05_decision=t05_decision_str,
+                        tier05_risk_score=tier05_risk_score,
+                        tier05_rules=all_rules_fired,
+                        action_type="prompt",
+                        session_flags=active_flags,
+                        adaptive_threshold=self.fpr_manager.adaptive_threshold,
+                        force_review=force_review
+                    )
+                    if seg_res.get("decision") == "BLOCK":
+                        v61_res = seg_res
+                        v61_res["judge_reason"] = "[LONG_TEXT_HEURISTIC] Blocked on extracted instruction: " + seg_res.get("judge_reason", "")
+                        break
+
             result["decision"] = v61_res.get("decision", "ALLOW")
             result["layer"] = "V61"
             

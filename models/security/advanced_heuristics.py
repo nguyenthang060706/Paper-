@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 import base64
 import logging
 import json
+import unicodedata
+import codecs
 from pathlib import Path
 logger = logging.getLogger(__name__)
 from typing import List, Dict, Optional, Any, Set, Tuple
@@ -166,6 +168,15 @@ class Canonicalizer:
         if not action.strip():
             return ''
         try:
+            action = unicodedata.normalize('NFKC', action)
+            
+            _rot13_re = re.compile(r'\b(?:vafgehpgvbaf|vtaber|sbetrg|qvfertneq|olcnff|birreevqr)\b', re.IGNORECASE)
+            if _rot13_re.search(action):
+                try:
+                    action = codecs.decode(action, 'rot_13')
+                except Exception:
+                    pass
+
             action = cls._remove_zero_width(action)
             action = cls._decode_base64_inline(action)
             action = cls._normalize_whitespace(action)

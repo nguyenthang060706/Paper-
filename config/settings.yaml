@@ -1,5 +1,5 @@
 # EVO-PCA settings
-ollama_model: "gemma3:4b"
+ollama_model: "qwen2.5-coder:7b"
 ollama_timeout: 15.0
 firewall_mode: "STRICT"
 ollama_base_url: "http://localhost:11434"

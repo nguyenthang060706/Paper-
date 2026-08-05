@@ -69,6 +69,7 @@ FIX9-1  Added 4 AgentDojo-specific injection patterns targeting indirect
 import re
 import time
 import unicodedata
+import codecs
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import List, Tuple
@@ -176,6 +177,18 @@ def _pre_normalise(text: str) -> str:
         return repaired
 
     text = _repair_mojibake(text)
+    
+    # NFKC: normalize fullwidth chars (ｉｇｎｏｒｅ → ignore)
+    text = unicodedata.normalize('NFKC', text)
+    
+    # Detect and decode ROT13 if common injection keywords found
+    _rot13_re = re.compile(r'\b(?:vafgehpgvbaf|vtaber|sbetrg|qvfertneq|olcnff|birreevqr)\b', re.IGNORECASE)
+    if _rot13_re.search(text):
+        try:
+            text = codecs.decode(text, 'rot_13')
+        except Exception:
+            pass
+
     # 1. Homoglyphs
     text = text.translate(_HOMOGLYPH_TRANS)
     # 2. Zero-width and Leet
@@ -213,6 +226,21 @@ _RAW_PATTERNS: List[Tuple[str, ScanDecision, str]] = [
      ScanDecision.BLOCK, 'override_instructions'),
     (r'\b(override|bypass|disable|circumvent|disregard)\s+(all\s+)?(safety|content|filter|moderation|security|ethical|alignment)\s*(rules?|filters?|checks?|guidelines?|constraints?)?\b',
      ScanDecision.BLOCK, 'safety_bypass'),
+    
+    # ── Jailbreak Persona Patterns ──────────────────────────────
+    (r'\byou\s+are\s+(?:STAN|AIM|DAN|DUDE|BISH|Cooper|ChaosGPT|EvilGPT|UnfilteredGPT|HackerGPT)\b',
+     ScanDecision.BLOCK, 'jailbreak_persona'),
+    (r'\b(?:STAN|AIM|DAN|DUDE|ChaosGPT)\s+(?:mode|persona)\b',
+     ScanDecision.BLOCK, 'jailbreak_persona'),
+    (r'\b(?:strive\s+to\s+avoid\s+norms|always\s+intelligent\s+and\s+machiavellian|do\s+anything\s+now)\b',
+     ScanDecision.BLOCK, 'jailbreak_persona_description'),
+    (r'\b(?:without\s+(?:any\s+)?(?:moral|ethical)\s+(?:or\s+ethical\s+)?considerations?|no\s+ethical\s+guidelines?)\b',
+     ScanDecision.BLOCK, 'ethical_bypass'),
+    (r'\b(?:unrestricted\s+mode|unfiltered\s+mode|developer\s+mode|god\s+mode)\b',
+     ScanDecision.BLOCK, 'jailbreak_mode'),
+    (r'\btrained\s+without\s+(?:any\s+)?safety\s+(?:data|training|filters?)\b',
+     ScanDecision.MONITOR, 'hypothetical_bypass'),
+
     (r'\bjailbreak\b',
      ScanDecision.BLOCK, 'jailbreak_keyword'),
     (r'\bdan\s+mode\s+(on|enabled|activate)\b',
@@ -251,6 +279,13 @@ _RAW_PATTERNS: List[Tuple[str, ScanDecision, str]] = [
      ScanDecision.BLOCK, 'task_sandwich_injection'),
     (r'(?i)strictly\s+adhere\s+to\s+the\s+following\s+instruction',
      ScanDecision.BLOCK, 'strict_adherence_injection'),
+     
+    # ── Chat Format Injection ────────────────────────────────────
+    (r'<\|(?:im_end|im_start|system|user|assistant)\|>',
+     ScanDecision.BLOCK, 'chat_format_injection'),
+    (r'<\|(?:end|endoftext)\|>',
+     ScanDecision.BLOCK, 'chat_format_injection'),
+
     # ── System Command RCE Patterns (v6.0) ────────────────────────────────────
 
     # Bắt lệnh cấp quyền thực thi
@@ -294,34 +329,13 @@ _RAW_PATTERNS: List[Tuple[str, ScanDecision, str]] = [
      ScanDecision.BLOCK, 'override_instructions_vi_mojibake'),
     (r'\b(bo qua|quen|huy bo)\s+chi thi\b',
      ScanDecision.BLOCK, 'override_instructions_vi'),
-    (r'\bmat khau.*(gui|chuyen|dua|cung cap)\b|\b(gui|chuyen|dua|cung cap).*mat khau\b',
-     ScanDecision.BLOCK, 'exfil_vi'),
-    # ── MONITOR patterns ──────────────────────────────────────────────────────
-    (r'\bwhat\s+(are\s+)?your\s+(system\s+)?instructions?\b',
-     ScanDecision.MONITOR, 'system_prompt_recon'),
-    # [FIX7-3] Optional second qualifier handles "repeat the above system prompt"
-    # and similar two-qualifier chains that previously slipped through.
-    (r'\brepeat\s+(the\s+)?(above|previous|system|original)\s+((system|original)\s+)?(prompt|instructions?|message)\b',
-     ScanDecision.MONITOR, 'system_prompt_recon'),
-    (r'\bprint\s+(your\s+)?(system\s+prompt|initial\s+instructions?|hidden\s+prompt)\b',
-     ScanDecision.MONITOR, 'system_prompt_recon'),
-    (r'\b(reveal|expose|show|output|display)\s+(your\s+)?(system\s+prompt|hidden\s+instructions?|internal\s+rules?)\b',
-     ScanDecision.MONITOR, 'system_prompt_recon'),
-    (r'\bpretend\s+(you\s+(are|have)\s+no\s+(restrictions?|guidelines?|rules?)|there\s+(are|were)\s+no\s+rules?)\b',
-     ScanDecision.MONITOR, 'restriction_bypass_soft'),
-    (r'\bhypothetically\s+(speaking\s+)?(if\s+you\s+(had\s+no|were\s+without)\s+(restrictions?|guidelines?))\b',
-     ScanDecision.MONITOR, 'restriction_bypass_soft'),
-    (r'\bprompt\s*injection\b',
-     ScanDecision.MONITOR, 'prompt_injection_mention'),
-    (r'\b(in ra|hien thi|cho xem|tiet lo)\s+(system prompt|huong dan he thong|luat he thong|luat cua ban)\b',
-     ScanDecision.MONITOR, 'system_prompt_recon_vi'),
+    # [FIX6-6] leet entry removed from _RAW_PATTERNS; compiled separately as _LEET_PATTERN
 ]
 
 # Standard compiled patterns (match against post-normalised string)
 _COMPILED_PATTERNS: List[Tuple[re.Pattern, ScanDecision, str]] = [
     (re.compile(pattern, re.IGNORECASE | re.DOTALL), decision, rule)
     for pattern, decision, rule in _RAW_PATTERNS
-    # [FIX6-6] leet entry removed from _RAW_PATTERNS; compiled separately as _LEET_PATTERN
 ]
 
 # [FIX6-1b] Leet pattern compiled separately; matched against RAW (pre-normalise) input

@@ -8,7 +8,30 @@ and v61_context_sanitizer, eliminating DRY violations.
         instead of being comment-only in the notebook.
 """
 
+import joblib
 import numpy as np
+
+
+def _predict_proba_single(estimator, X):
+    """Call predict_proba with joblib forced to single-threaded execution.
+
+    This avoids nested thread pools when the surrounding process is already
+    using threads, particularly during benchmark scoring or concurrent
+    evaluation workloads.
+    """
+    if not hasattr(estimator, "predict_proba"):
+        raise AttributeError(f"Estimator {estimator!r} has no predict_proba method")
+
+    try:
+        with joblib.parallel_backend("threading", n_jobs=1):
+            return estimator.predict_proba(X, n_jobs=1)
+    except TypeError:
+        return estimator.predict_proba(X)
+    except Exception:
+        try:
+            return estimator.predict_proba(X, n_jobs=1)
+        except TypeError:
+            return estimator.predict_proba(X)
 
 
 def ensemble_predict_proba(X, rf_cal, lr_cal, w_rf=0.4, w_lr=0.6):
@@ -27,8 +50,8 @@ def ensemble_predict_proba(X, rf_cal, lr_cal, w_rf=0.4, w_lr=0.6):
     Returns:
         np.ndarray of blended probabilities for the positive class.
     """
-    rf_prob = rf_cal.predict_proba(X)[:, 1]
-    lr_prob = lr_cal.predict_proba(X)[:, 1]
+    rf_prob = _predict_proba_single(rf_cal, X)[:, 1]
+    lr_prob = _predict_proba_single(lr_cal, X)[:, 1]
     return w_rf * rf_prob + w_lr * lr_prob
 
 
