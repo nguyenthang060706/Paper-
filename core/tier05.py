@@ -360,7 +360,7 @@ class SessionAwareTier05:
             tier0_result = None
             if self._tier0 is not None:
                 # [Phase 1.2] Cô lập biến số: Tier 0 chỉ quét prompt (NLP), bỏ qua tool_call (JSON/API)
-                if action_type == "prompt":
+                if action_type in ("prompt", "tool_output", "tool_call"):
                     tier0_result = self._tier0.scan(action, skip_rce=skip_rce)
                     if tier0_result and getattr(tier0_result, 'is_blocked', False):
                         session.block_count += 1

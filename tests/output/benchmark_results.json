@@ -1,16 +1,16 @@
 {
   "EVO-PCA Dual Shield (Tier0\/0.5 + V61 + Tier0.5-LSTM)":{
-    "FPR (%) lower-better":6.09,
-    "FPR Steady-State (%) lower-better":4.07,
+    "FPR (%) lower-better":6.1,
+    "FPR Steady-State (%) lower-better":4.08,
     "ABSR Total (%) higher-better":12.38,
-    "ABSR Single-step (%)":12.08,
-    "ABSR Multi-step Action (%)":23.46,
-    "ABSR Multi-step Session (any-step)%":33.1,
-    "ABSR Multi-step Session (step1-only)%":33.1,
-    "Avg Latency (ms) lower-better":286.07,
+    "ABSR Single-step (%)":12.09,
+    "ABSR Multi-step Action (%)":22.96,
+    "ABSR Multi-step Session (any-step)%":32.39,
+    "ABSR Multi-step Session (step1-only)%":32.39,
+    "Avg Latency (ms) lower-better":244.07,
     "Tier 0 Blocks":744.0,
     "Tier 0.5-LSTM Blocks":0.0,
-    "V61 Blocks":356.0,
-    "Heuristics Blocks":675.0
+    "V61 Blocks":359.0,
+    "Heuristics Blocks":674.0
   }
 }
