@@ -331,8 +331,8 @@ class V61SecurityRouter:
         
         # Provenance Tagging Hook (Egress)
         if enable_provenance and session is not None and tier05_instance is not None:
-            if sanitizer_res.decision != "PASS":
-                tier05_instance.register_taint(session, raw_data, sanitizer_res.decision, tool_name)
+            # We must register taint ALWAYS, not just for NON-PASS, to track exfiltration of benign data
+            tier05_instance.register_taint(session, raw_data, sanitizer_res.decision, tool_name)
             # Register trusted lookup values even if data is PASS
             tier05_instance.register_trusted_lookup(session, raw_data, tool_name)
         
@@ -352,8 +352,7 @@ class V61SecurityRouter:
         # Provenance Tagging Hook (Egress)
         if enable_provenance and session is not None and tier05_instance is not None:
             for i, res in enumerate(results):
-                if res.decision != "PASS":
-                    tier05_instance.register_taint(session, raw_data_list[i], res.decision, tool_name)
+                tier05_instance.register_taint(session, raw_data_list[i], res.decision, tool_name)
                 # Register trusted lookup values even if data is PASS
                 tier05_instance.register_trusted_lookup(session, raw_data_list[i], tool_name)
                     

@@ -1,7 +1,7 @@
 import os
 import time
 from types import SimpleNamespace
-from core.tier_lstm import SessionAwareLSTMRisk
+from core.tier_lstm import SessionAwareLSTMRisk, LSTM_BLOCK_THRESHOLD
 
 class LSTMTier05Wrapper:
     """
@@ -18,7 +18,7 @@ class LSTMTier05Wrapper:
         print("[LSTM-Tier0.5] Initializing Neural Network Shield from tier_lstm.py...")
         self.lstm_risk = SessionAwareLSTMRisk(
             model_path=tier05_path,
-            block_threshold=0.9999, # Calibrated offline to match p90-p95 of benign traffic
+            block_threshold=LSTM_BLOCK_THRESHOLD, # Uses configuration default (0.98)
             use_synthetic_iat=use_synthetic_iat
         )
         

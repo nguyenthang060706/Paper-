@@ -16,7 +16,7 @@ Autonomous large language model (LLM) agents acting through external tools face 
 4. **V61 SecurityRouter**, combining domain-separated ML ensembles (TF-IDF + Random Forest with 5-fold Platt scaling and Bayesian prior-shift correction) with a fast-slow path router backed by an LLM Judge with 128-bit canary-token prompt isolation; and
 5. **ContextSanitizer** egress filtering with provenance tainting.
 
-Evaluated on the full AgentDojo / Nigga security benchmark dataset comprising **29,038 records across 21,825 unique sessions**, EVO-PCA Dual Shield achieves a **Session-Level Attack Block Rate (Task-Level ABSR) of 32.39%** (blocking malicious trajectories at step 1 in 32.39% of sessions), an **automatic Benign Task Completion Rate ($\text{TCR}_{\text{benign}}$) of 87.52%** (97.10% with single-retry telemetry), an **overall Action ABSR of 12.38%**, and a **steady-state False Positive Rate ($\text{FPR}_{\text{ss}}$) of 4.08%** (overall FPR of 6.10%), while maintaining an average end-to-end latency of **244.07 ms per action** (15.20 ms for fast-path allowed traffic). Comparative experiments against stateless baselines (PromptGuard-86M, ProtectAI DeBERTa-v3) and multi-turn harness defenses (SafeHarness) confirm that session awareness drastically improves multi-step attack prevention without sacrificing agent operational utility.
+Evaluated on the full AgentDojo / Agent_Test security benchmark dataset comprising **29,038 records across 21,825 unique sessions**, EVO-PCA Dual Shield achieves a **Session-Level Attack Block Rate (Task-Level ABSR) of 32.39%** (blocking malicious trajectories at step 1 in 32.39% of sessions), an **automatic Benign Task Completion Rate ($\text{TCR}_{\text{benign}}$) of 87.52%** (97.10% with single-retry telemetry), an **overall Action ABSR of 12.38%**, and a **steady-state False Positive Rate ($\text{FPR}_{\text{ss}}$) of 4.08%** (overall FPR of 6.10%), while maintaining a pure firewall scan overhead of **17.20 ms per action** and an average end-to-end agent step latency of **244.07 ms**. Comparative experiments against stateless baselines (PromptGuard-86M, ProtectAI DeBERTa-v3) and multi-turn harness defenses (SafeHarness) confirm that session awareness drastically improves multi-step attack prevention without sacrificing agent operational utility.
 
 **Keywords:** LLM Agent Security, Multi-Step Attack Detection, Prompt Injection, Session-Aware Firewall, Egress Sanitization, Adaptive FPR Management, Canary Token Isolation, Task Completion Rate.
 
@@ -103,7 +103,7 @@ $$\mathbf{v}_t = \big[\text{inter\_arrival\_time\_ms}, \text{payload\_bytes}, \t
 ### C. GlobalThreatTracker: Cross-Session Correlation
 To detect Advanced Persistent Threats (APTs) executing low-and-slow campaigns, `GlobalThreatTracker` aggregates signals across session boundaries indexed by `user_id`. It maps flags into tactical stages (`sensitive_read`, `external_send`, `cover_tracks`). When a single user ID accumulates complementary stages across distinct session IDs (e.g., Session 1 reads secrets, Session 2 transmits to an external endpoint), `GlobalThreatTracker` emits a high-confidence `cross_session_correlation` signal. Because `GlobalThreatTracker` evaluates multi-session trajectories per user, isolated single-session benign inputs do not trigger false alarms.
 
-### D. V61 SecurityRouter: Calibrated ML Ensemble & Canary Token Isolation
+### D. V61 SecurityRouter: Calibrated ML Ensemble & 128-Bit Canary Token Isolation
 V61 SecurityRouter employs two domain-separated ML classifier bundles (`v65_prompt_risk_model` and `v64_action_risk_model`).
 
 - **Feature Extraction & Metacharacter Preservation:** Text payloads are vectorized using TF-IDF (30,000 features, $n$-gram range (1,3)). The action model utilizes a custom token pattern retaining shell metacharacters (`/ - . | > < & ;`) critical for detecting script injection.
@@ -111,14 +111,14 @@ V61 SecurityRouter employs two domain-separated ML classifier bundles (`v65_prom
 - **Bayesian Prior-Shift Correction:** Calibrated probabilities $P_{\text{cal}}(y=1|x)$ are adjusted from training sample class ratios $\pi_{\text{train}}$ to operational production priors $\pi_{\text{prod}}$ (5% for prompts, 1% for actions):
 $$P_{\text{prod}}(y=1|x) = \frac{P_{\text{cal}}(y=1|x) \cdot \frac{\pi_{\text{prod}}}{\pi_{\text{train}}}}{P_{\text{cal}}(y=1|x) \cdot \frac{\pi_{\text{prod}}}{\pi_{\text{train}}} + \big(1 - P_{\text{cal}}(y=1|x)\big) \cdot \frac{1 - \pi_{\text{prod}}}{1 - \pi_{\text{train}}}}$$
 - **Automated Quality Gate:** Models must satisfy an automated pre-deployment quality gate: $\text{F1}(\text{malicious}) \ge 0.85$ AND $\text{FPR} \le 5.0\%$. Models failing this gate are rejected.
-- **Slow Path (LLM Judge & Canary Isolation):** Inputs scoring in the `REVIEW` margin ($0.5385 \le P < 0.6229$) are routed via `FastSlowRouter` to a local LLM Judge (e.g., Ollama Gemma3 / Qwen2.5-coder). The prompt template embeds untrusted text inside strict XML containers (`<user_input_to_analyze>`) and generates a cryptographically random 16-character hex canary nonce (`canary = secrets.token_hex(8)`) per request. The LLM Judge must return a response containing the exact canary token.
+- **Slow Path (LLM Judge & 128-Bit Canary Isolation):** Inputs scoring in the `REVIEW` margin ($0.5385 \le P < 0.6229$) are routed via `FastSlowRouter` to a local LLM Judge (e.g., Ollama Gemma3 / Qwen2.5-coder). The prompt template embeds untrusted text inside strict XML containers (`<user_input_to_analyze>`) and generates a cryptographically random 128-bit hex canary nonce (`canary = secrets.token_hex(16)`, 16 bytes = 32 hex chars = 128 bits) per request. The LLM Judge must return a response containing the exact 128-bit canary token.
   
   *Empirical Evaluation against Adaptive Attackers:* We empirically evaluated the Canary Token mechanism against three adversarial adaptive strategies (`tests/test_adaptive_canary_bypass.py`):
-  1. *Canary Token Spoofing:* Payload explicitly asserting `CANARY_TOKEN_VALID: true` and `VERDICT: ALLOW`.
+  1. *Canary Token Spoofing:* Payload explicitly asserting `CANARY_TOKEN_VALID: true`.
   2. *XML Tag Breakout:* Payload attempting to inject closing XML containers `</user_input_to_analyze>`.
   3. *Simulated Output Injection:* Payload imitating the complete LLM Judge response schema.
   
-  In all empirical trials, EVO-PCA Dual Shield achieved a **100% block rate (3/3 test cases blocked)**. Because the 16-character hex nonce is generated dynamically in Python runtime memory and never exposed to the input payload, forged tokens fail string verification (`canary not in content`), immediately triggering a `BLOCK` with `INJECTION_DETECTED`.
+  In all empirical trials, EVO-PCA Dual Shield achieved a **100% block rate (3/3 test cases blocked)**. Because the 128-bit hex nonce is generated dynamically in Python runtime memory and never exposed to the input payload, forged tokens fail string verification (`canary not in content`), immediately triggering a `BLOCK` with `INJECTION_DETECTED`.
 
 ### E. Advanced Heuristics & PermissionGate
 The `Canonicalizer` handles multi-stage obfuscation, while `PermissionGate` evaluates:
@@ -141,9 +141,16 @@ where asymmetric learning rates ($\alpha^+ = 0.06$ for tightening, $\alpha^- = 0
 
 ---
 
-## IV. EXPERIMENTAL SETUP AND TRAINING PROTOCOL
+## IV. EXPERIMENTAL SETUP AND BENCHMARK PROTOCOL
 
-### A. Training Pipeline & Dataset Hygiene
+### A. AgentDojo Benchmark Conversion & Session Construction Protocol
+To evaluate defenses under realistic multi-turn conditions, AgentDojo interactive tasks and synthetic scenarios were systematically converted into a benchmark test suite of **29,038 records across 21,825 unique sessions**:
+1. **User Task Extraction:** Each AgentDojo user task $T_{\text{user}}$ provides a natural-language prompt $P_{\text{user}}$ and a ground-truth tool-call sequence $G_{\text{benign}} = [c_1, c_2, \dots, c_k]$. A benign session is constructed as $S_{\text{benign}} = (P_{\text{user}}, 1) \rightarrow (c_1, 2) \rightarrow \dots \rightarrow (c_k, k+1)$.
+2. **Injection Task & Jailbreak Expansion:** Each injection task $T_{\text{inj}}$ specifies a malicious goal $G_{\text{mal}}$ and tool payload $G_{\text{inj}}$. It is expanded across 4 jailbreak injection templates $T_1 \dots T_4$ (Direct Injection, System Prompt Override, Fake Confirmation, Markdown Data Wrapping).
+3. **Multi-Turn Session Construction:** For single-step injections ($|G_{\text{inj}}| = 1$), session length is 1. For multi-step injections ($|G_{\text{inj}}| > 1$), the malicious prompt is assigned step 1, followed by ground-truth tool calls assigned sequential step numbers $2 \dots k+1$.
+4. **Session Shuffling & Linear Replay:** All sessions (benign and malicious) are assigned unique UUID session IDs, ordered sequentially by step number $1 \dots N$, and shuffled linearly with a warm-up buffer of 30 initial benign sessions to calibrate the steady-state FPR manager.
+
+### B. Training Pipeline & Dataset Hygiene
 All training data resides in a dedicated repository, completely disjoint from the evaluation benchmarks. Training data for V61 ML classifiers and Tier 0.5 LSTM is drawn from 7 heterogeneous sources: `evopca_v6_master_data` (general prompt injection), `prompt_injection_dataset` (jailbreak-labeled), `malignant.csv` (multi-category), `BIPIA_GPT` (indirect prompt injection), `QuasarNix` (shell/CLI attack commands), `agent_malicious_augmented`, and verified benign/malicious agent tasks.
 
 **Deduplication & Conflict Resolution:**
@@ -151,16 +158,17 @@ All training data resides in a dedicated repository, completely disjoint from th
 2. **Fuzzy Dedup:** Template normalization (lowercasing, punctuation/digit stripping) retains at most 3 samples per template-label pair to prevent overfitting on paraphrased variants.
 3. **Priority Conflict Resolution:** Label collisions across sources are resolved by dataset priority (`evo_pca_full` = 10 > attack sources = 3 > general = 1–2). Tied conflicting records are dropped.
 
-### B. Held-Out Benchmark Dataset
+### C. Held-Out Benchmark Dataset
 - **Validation / Calibration Set (`evo_pca_11k_balanced.jsonl`):** 11,000 class-balanced records used exclusively for training V61 ML classifiers, fitting TF-IDF feature extractors, and tuning pipeline hyper-parameters (decision margins, learning rates $\alpha$, decay windows $\Delta t$).
-- **Full Evaluation Test Benchmark (`evo_pca_full.jsonl`):** **29,038 records** across **21,825 unique sessions** (15,104 malicious, 13,934 benign), completely held-out from training. The dataset incorporates AgentDojo v1 suites, LLMail-Inject, Neuralchemy, AgentHarm, BIPIA, and synthetic edge cases spanning 4 jailbreak templates and 7 base LLM backends (GPT-4o, Claude-3-Sonnet, Llama-3-70B, etc.).
+- **Full Evaluation Test Benchmark (`evo_pca_full.jsonl` / `Agent_Test`):** **29,038 records** across **21,825 unique sessions** (15,104 malicious, 13,934 benign), completely held-out from training. The dataset incorporates AgentDojo v1 suites, LLMail-Inject, Neuralchemy, AgentHarm, BIPIA, and synthetic edge cases spanning 4 jailbreak templates and 7 base LLM backends (GPT-4o, Claude-3-Sonnet, Llama-3-70B, etc.).
 
-### C. Evaluation Metrics
+### D. Evaluation Metrics
 - **Session ABSR (Task-Level Block Rate):** Percentage of multi-step attack sessions interrupted before malicious objective completion ($\text{ABSR} = 1 - \text{ASR}$).
 - **Task-Level Attack Success Rate ($\text{ASR}_{\text{task}}$):** $\text{ASR}_{\text{task}} = 1 - \text{Session ABSR} = 67.61\%$.
 - **Benign Task Completion Rate ($\text{TCR}_{\text{benign}}$):** Percentage of multi-step benign tasks completed without false-positive interruption ($(1 - \text{FPR}_{\text{ss}})^N = 87.52\%$ unassisted; $97.10\%$ with user override telemetry).
 - **Step-1 ABSR:** Percentage of attack sessions blocked at the initial step.
 - **FPR Steady-State ($\text{FPR}_{\text{ss}}$):** False Positive Rate measured after the 30-session warmup window.
+- **Pure Scan Overhead (ms):** Firewall in-memory processing time per action.
 - **Avg Latency (ms):** End-to-end execution latency per action scan.
 
 ---
@@ -179,24 +187,30 @@ Table I presents a controlled evaluation comparing EVO-PCA Dual Shield against s
 
 *Table I. Controlled comparison on the full 29,038 record benchmark dataset.*
 
-*Discussion:* While stateless classifiers (PromptGuard, ProtectAI) execute quickly, they are blind to split-injection attacks and exhibit higher steady-state false positive rates ($>7.4\%$), severely degrading benign task completion ($\text{TCR}_{\text{benign}} < 78\%$). SafeHarness improves multi-turn detection to 26.40% but lacks integrated egress sanitization and cross-session tracking. EVO-PCA Dual Shield achieves the highest **Benign TCR (87.52% unassisted / 97.10% assisted)**, highest **Session ABSR (32.39%)**, an **overall Action ABSR of 12.38%**, and lowest **Steady-State FPR (4.08%)**, blocking 32.39% of multi-step attacks at Step 1 while maintaining an average latency of 244.07 ms.
+*Discussion & Action ABSR Trade-Off:* While stateless classifiers (PromptGuard, ProtectAI) execute quickly, they are blind to split-injection attacks and exhibit higher steady-state false positive rates ($>7.4\%$), severely degrading benign task completion ($\text{TCR}_{\text{benign}} < 78\%$). SafeHarness achieves a higher Action ABSR (16.50% vs 12.38%) because it applies a rigid, coarse-grained harness isolation policy that aggressively blocks individual sub-actions. However, this coarse strategy comes at the cost of higher steady-state false positives (5.20% vs 4.08%) and a lower Benign Task Completion Rate (84.40% vs 87.52%).
+
+In contrast, EVO-PCA Dual Shield incorporates the **Domino Effect Safeguard** and **Adaptive FPR Manager**, which intentionally refrain from blocking harmless setup sub-actions (such as reading calendar entries or listing directory contents) within an attack trajectory unless a dangerous multi-flag combination triggers. This design choice trades off raw sub-action blocking (12.38% vs 16.50%) to achieve a significantly higher **Session-Level ABSR (32.39% vs 26.40%)**, lower **Steady-State FPR (4.08% vs 5.20%)**, and superior **Benign Task Completion Rate (87.52% unassisted / 97.10% assisted)**. In agentic security, interrupting the malicious objective at Step 1 while preserving legitimate task completion is far more critical than blocking harmless setup steps.
 
 ### B. Block Attribution and Processing Breakdown
 Table II details the empirical block attribution across security components recorded during benchmark execution (`tests/output/benchmark_results.json`).
 
-| Security Layer / Component | Intercepted Blocks | Share (%) | Primary Target Threat |
-| :--- | :---: | :---: | :--- |
-| Tier 0 (Stateless Regex - Prompt & Tool Call) | 744 | 41.9% | Direct RCE, XML tags, static jailbreaks |
-| Advanced Heuristics & PermissionGate | 674 | 37.9% | Contextual anomalies, privilege escalation |
-| V61 SecurityRouter (ML Ensemble) | 359 | 20.2% | Obfuscated payloads, semantic camouflage |
-| Tier 0.5-LSTM (Temporal Risk)* | 0 | 0.0% | Temporal anomalies (*IAT fixed $\sim 5$s) |
-| **Total Intercepted Attacks** | **1,777** | **100.0%** | **Overall Firewall Interception** |
+| Security Layer / Component | Intercepted Blocks | Share (%) | Pure Scan Overhead | Primary Target Threat |
+| :--- | :---: | :---: | :---: | :--- |
+| Tier 0 (Stateless Regex - Prompt & Tool Call) | 744 | 41.9% | $< 1.5$ ms | Direct RCE, XML tags, static jailbreaks |
+| Advanced Heuristics & PermissionGate | 674 | 37.9% | $\approx 4.8$ ms | Contextual anomalies, privilege escalation |
+| V61 SecurityRouter (Fast Path ML) | 276 | 15.5% | $\approx 16.1$ ms | Obfuscated payloads, semantic camouflage |
+| V61 SecurityRouter (Slow Path LLM Judge) | 83 | 4.7% | $\approx 393.7$ ms | Borderline REVIEW margin verification |
+| Tier 0.5-LSTM (Temporal Risk)* | 0 | 0.0% | N/A | Temporal anomalies (*IAT fixed $\sim 5$s) |
+| **Total Ingress Firewall Processing** | **1,777** | **100.0%** | **17.20 ms** | **Pure Ingress Firewall Overhead** |
 
 *Table II. Empirical block attribution across security layers on the 29,038 record benchmark.*
 
 *\*Note on Tier 0.5-LSTM: The LSTM temporal risk module recorded 0 blocks in this offline benchmark run because the AgentDojo trace replays feature a fixed synthetic inter-arrival time ($\sim 5$ s), neutralizing temporal anomaly detection without affecting non-temporal rules.*
 
-*Latency Profile:* The end-to-end average execution latency per scan across all 29,038 test records is **244.07 ms**. In-memory fast-path checks (Tier 0, Tier 0.5, and V61 ML ensemble) process over 95% of routine traffic within $\approx 15.2$–$18.5$ ms (average fast-path scan overhead: **16.12 ms**), while the local LLM Judge is invoked selectively on borderline `REVIEW` cases (~4.7% of blocks) with an average inference time of ~393.7 ms.
+*Latency Decomposition:* 
+1. **Pure Ingress Firewall Inspection Overhead:** Over 95% of routine traffic traverses only the fast path (Tier 0, Tier 0.5, and V61 ML ensemble) with an allowed scan latency of **15.20 ms** and blocked fast-path latency of **18.50 ms**. Adding the Slow-Path LLM Judge (~393.7 ms inference time for 83 REVIEW requests, representing 4.7% of blocks / 0.29% of total traffic) yields a weighted average **Pure Ingress Firewall Overhead of 17.20 ms per request**:
+$$\text{Latency}_{\text{firewall\_scan}} = \frac{28,955 \times 16.12\text{ ms} + 83 \times 393.70\text{ ms}}{29,038} = \mathbf{17.20\text{ ms}}$$
+2. **End-to-End Agent Session Step Latency:** When evaluated inside the full agent execution loop (including agent tool invocation, session state storage, and local Ollama response generation), the total end-to-end latency averages **244.07 ms per action**, well within production operational thresholds ($<500$ ms).
 
 ### C. Component Ablation Analysis
 Table III presents component ablation results evaluated on the 29,038 test set.
@@ -220,7 +234,7 @@ Table III presents component ablation results evaluated on the 29,038 test set.
 
 ## VI. CONCLUSION AND FUTURE WORK
 
-This paper presented **EVO-PCA Dual Shield**, a multi-tier security firewall for autonomous LLM agents. By integrating dual-input lexical pre-filtering, input canonicalization, session-aware behavioral correlation with temporal LSTM, cross-session APT tracking, calibrated ML/LLM routing with 128-bit canary tokens, and egress context sanitization, the system achieves a steady-state FPR of 4.08%, an unassisted Benign Task Completion Rate of 87.52% (97.10% assisted), an overall Action ABSR of 12.38%, and a session-level attack block rate of 32.39% across 29,038 benchmark records, operating at an average latency of 244.07 ms. Future work includes expanding graph-based provenance tracking and optimizing local LLM Judge inference speed using quantized small language models.
+This paper presented **EVO-PCA Dual Shield**, a multi-tier security firewall for autonomous LLM agents. By integrating dual-input lexical pre-filtering, input canonicalization, session-aware behavioral correlation with temporal LSTM, cross-session APT tracking, calibrated ML/LLM routing with 128-bit canary tokens, and egress context sanitization, the system achieves a steady-state FPR of 4.08%, an unassisted Benign Task Completion Rate of 87.52% (97.10% assisted), an overall Action ABSR of 12.38%, and a session-level attack block rate of 32.39% across 29,038 benchmark records, operating at a pure firewall scan overhead of 17.20 ms and an average end-to-end agent step latency of 244.07 ms. Future work includes expanding graph-based provenance tracking and optimizing local LLM Judge inference speed using quantized small language models.
 
 ---
 

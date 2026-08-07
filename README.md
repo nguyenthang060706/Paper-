@@ -27,6 +27,9 @@ Trong các phiên làm việc dài (long-running sessions), các mô hình neura
 - Nếu chuỗi thao tác chỉ là lặp lại lành tính ($\text{seq\_risk} < 0.05$), chốt giáp an toàn sẽ vô hiệu hóa báo động đếm bước của LSTM, giữ trọn vẹn luồng thi công không bị đứt đoạn.
 - Nếu xuất hiện bước nhảy vọt bất ngờ (như từ `check_server_uptime()` lập tức bẻ lái sang `export_database_records()`), mốc delta $\ge 0.65$ lập tức gạt sập cầu dao (**Block**).
 
+> [!NOTE]
+> **Lưu ý về Benchmark (ABSR / AgentDojo):** Nhánh phân loại theo xác suất của LSTM hiện đang bị tắt mặc định thông qua biến môi trường `TIER05_LSTM_ENABLED=False` để nhường tài nguyên cho V61 LLM Judge. Các chỉ số như "Tier 0.5-LSTM Blocks: 0.0" trong báo cáo benchmark phản ánh chính xác trạng thái tắt này. Khi bật, ngưỡng chặn sẽ được đồng bộ qua cấu hình `LSTM_BLOCK_THRESHOLD` thay vì fix cứng.
+
 ### 2. Dịch Vụ Mô Hình Hợp Nhất (`SharedSemanticEncoder`) & Bồn Cache Có Kiểm Soát
 - Tách rời hoàn toàn gánh nặng xử lý AI embedding: mọi module tham gia đều hội tụ qua cổng dịch vụ Singleton **`SharedSemanticEncoder`** trong `models/security/advanced_heuristics.py`, **tiêu tốn bộ nhớ mô hình bằng 0 khi sử dụng lại**.
 - **`SessionEmbeddingCacheManager`:** Tác vụ lưu cache vector chuỗi được khóa theo kích thước cố định (`maxsize = 50` mục/phiên, `TTL = 3600s`), tuyệt đối không gây tràn RAM (Memory Leak).

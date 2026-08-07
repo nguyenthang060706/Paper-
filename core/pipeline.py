@@ -12,6 +12,7 @@ from core.tier05 import SessionAwareTier05
 from models.security.v61_inference_router import V61SecurityRouter
 from models.security.feedback_logger import FeedbackLogger
 from models.security.advanced_heuristics import VotingAggregator, RiskSignal, Canonicalizer, PermissionGate, AdaptiveEscalationManager
+from models.security.boundary_detector import InstructionBoundaryDetector
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -112,6 +113,7 @@ class UnifiedFirewallPipeline:
             min_threshold=0.58, 
             warmup_decisions=30
         )
+        self.boundary_detector = InstructionBoundaryDetector()
             
     def scan(self, action: str, session_id: str, action_type: str = "prompt", actual_label: bool = None) -> dict:
         """
@@ -268,6 +270,19 @@ class UnifiedFirewallPipeline:
                 tool_name=tool_name
             )
             signals.extend(gate_signals)
+            
+            # --- Structural Invariant Detection (Phase 1) ---
+            is_violated, boundary_conf, violations = self.boundary_detector.detect(canonicalized_action_str)
+            if is_violated:
+                signals.append(RiskSignal(
+                    name='instruction_boundary_violation',
+                    severity=int(boundary_conf * 85),  # Feeds into voting
+                    confidence=boundary_conf,
+                    is_critical=boundary_conf > 0.85,
+                    source='boundary_detector',
+                    evidence=[f"Embedded instruction (conf={v.confidence:.2f}) at pos {v.position_ratio:.1%} in {v.context_type}" 
+                              for v in violations[:3]]
+                ))
             
             if getattr(t05_res, 'confidence', 0) > 0.1:
                 signals.append(RiskSignal(

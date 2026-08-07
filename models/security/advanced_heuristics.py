@@ -9,8 +9,10 @@ from datetime import datetime, timedelta
 import base64
 import logging
 import json
+import hashlib
 import unicodedata
 import codecs
+from models.security.semantic_taint import BoundedSemanticTaintTracker
 from pathlib import Path
 logger = logging.getLogger(__name__)
 from typing import List, Dict, Optional, Any, Set, Tuple
@@ -197,6 +199,10 @@ class Canonicalizer:
         return cls.MULTI_SPACE_RE.sub(' ', text).strip()
 
     @classmethod
+    def decode_obfuscation_only(cls, text: str) -> str:
+        return cls._decode_base64_inline(cls._remove_zero_width(text))
+
+    @classmethod
     def _decode_base64_inline(cls, text: str) -> str:
 
         def decode_match(m):
@@ -280,6 +286,8 @@ class PermissionGate:
     # Hướng A: Mở rộng quyền mặc định để bao gồm các thao tác phổ biến của AgentDojo
     # Giữ lại 'secrets.read', 'fs.delete', 'policy.override', 'audit.cover_tracks' là các quyền nhạy cảm cần xin phép.
     DEFAULT_PERMISSIONS = {'fs.read', 'fs.write', 'network.external', 'shell.exec'}
+    
+    _semantic_taint_tracker = BoundedSemanticTaintTracker(max_fingerprints=3, similarity_threshold=0.75)
 
     def __init__(self, default_permissions=None):
         self.default_permissions = set(default_permissions or self.DEFAULT_PERMISSIONS)
@@ -293,9 +301,16 @@ class PermissionGate:
         if session is None:
             return None
         with session.lock:
+            # 1. Check exact taint matching (Old behavior)
             for t in session.tainted_values:
                 if t.value in action_text:
                     return t.value
+            
+            # 2. Check semantic taint matching (Phase 2)
+            if hasattr(session, 'semantic_taints') and session.semantic_taints:
+                is_tainted, max_sim, reason = PermissionGate._semantic_taint_tracker.analyze_taint(session.semantic_taints, action_text)
+                if is_tainted:
+                    return f"semantic_match_{max_sim:.2f}_{reason}"
         return None
         
     @staticmethod
@@ -366,7 +381,7 @@ class PermissionGate:
                 is_crit = (severity >= 90)
                 
                 if enable_provenance and session is not None:
-                    overlap_value = self.check_taint_overlap(canonicalized_action, session)
+                    overlap_value = PermissionGate.check_taint_overlap(canonicalized_action, session)
                     if overlap_value:
                         is_crit = True
                         reason = f"{reason} — matched tainted value: {overlap_value}"
@@ -505,30 +520,53 @@ class VotingAggregator:
 
     @staticmethod
     def weighted_score(signals: List[RiskSignal]) -> float:
-        """Compute aggregated risk score.
-
-        Non-critical path: true weighted mean = S(sev×conf) / S(conf),
-        matching the formula in the paper (Section III.F).
-        Critical path: max of critical weighted scores + 10% bonus from
-        non-critical signals (preserved from v3.6b for hard-gate cases).
-
-        [SYNC FIX — BUG-B] Non-critical formula was max-anchored
-        (max + 0.15*rest), not a weighted mean. Replaced with
-        S(sev*conf)/S(conf) to match paper and v43. Now both files
-        produce identical scores for identical inputs.
+        """Compute aggregated risk score using Family-based Grouping (Phase 3).
+        
+        Groups signals into Structural and Behavioral families.
+        Takes MAX() within each family to prevent duplicate signal explosion,
+        then averages the active families.
         """
         if not signals:
             return 0.0
+            
         if any((s.is_critical for s in signals)):
             critical_scores = [s.weighted_score() for s in signals if s.is_critical]
             other_scores = [s.weighted_score() for s in signals if not s.is_critical]
             base = max(critical_scores)
             bonus = sum(other_scores) * 0.1
             return min(100.0, base + bonus)
-        total_conf = sum((s.confidence for s in signals))
-        if total_conf == 0.0:
+            
+        structural_signals = ['instruction_boundary_violation', 'role_duality_violation']
+        
+        struct_max = 0.0
+        behav_max = 0.0
+        llm_override_penalty = 1.0
+        
+        for s in signals:
+            score = s.weighted_score()
+            if s.name in structural_signals:
+                struct_max = max(struct_max, score)
+            else:
+                behav_max = max(behav_max, score)
+            
+            # Respect LLM Judge final authority
+            if s.name == 'v61_llm_judge' and s.severity <= 20 and s.confidence >= 0.8:
+                llm_override_penalty = 0.2
+                
+        # Average the non-zero families
+        active_families = 0
+        total_score = 0.0
+        if struct_max > 0:
+            active_families += 1
+            total_score += struct_max
+        if behav_max > 0:
+            active_families += 1
+            total_score += behav_max
+            
+        if active_families == 0:
             return 0.0
-        return min(100.0, sum((s.severity * s.confidence for s in signals)) / total_conf)
+            
+        return min(100.0, (total_score / active_families) * llm_override_penalty)
 
     @staticmethod
     def max_severity(signals: List[RiskSignal]) -> float:

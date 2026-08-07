@@ -34,9 +34,9 @@ try:
 except ImportError:
     # BUG 2 FIXED: Cung cấp Fallback Class thực sự để tránh NameError khi import thiếu
     class ScanDecision(str, Enum):
-        ALLOW = 'allow'
-        BLOCK = 'block'
-        MONITOR = 'monitor'
+        ALLOW = 'ALLOW'
+        BLOCK = 'BLOCK'
+        MONITOR = 'MONITOR'
         
     @dataclass
     class ScanResult:
@@ -192,6 +192,7 @@ class SessionState:
     tainted_values: List[TaintRecord] = field(default_factory=list)
     trusted_values: List[TrustedLookup] = field(default_factory=list)
     user_goal_text: str = ""
+    semantic_taints: List[str] = field(default_factory=list) # Base64 or semantic hashes (up to K)
 
 
 class SessionAwareTier05:
@@ -253,6 +254,13 @@ class SessionAwareTier05:
                             origin_decision=decision,
                             timestamp=current_time
                         ))
+            
+            # Phase 2 Semantic Taint: Store the entire raw output for O(K) fingerprinting
+            if len(raw_tool_output) > 10:
+                session.semantic_taints.append(raw_tool_output)
+                # Keep only last K (e.g. 3) to maintain O(K)
+                if len(session.semantic_taints) > 3:
+                    session.semantic_taints.pop(0)
 
     # Tools whose output values are considered trusted internal lookups.
     # Values extracted from these tools' outputs will NOT trigger

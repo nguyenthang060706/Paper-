@@ -19,6 +19,6 @@
     "STRIP_AND_WRAP": 0.85
   },
   "provenance_tagging": {
-    "enabled": false
+    "enabled": true
   }
 }
