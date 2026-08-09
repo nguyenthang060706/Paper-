@@ -314,6 +314,13 @@ class SessionAwareTier05:
         for flag in expired_flags:
             del session.flags[flag]
             
+        # Reset combo trigger counts if any of their required flags have expired
+        if expired_flags:
+            for combo_flags, _, description, _ in _DANGEROUS_COMBOS:
+                if description in session.combo_trigger_counts:
+                    if any(f in expired_flags for f in combo_flags):
+                        del session.combo_trigger_counts[description]
+            
         # Cleanup tainted_values
         alive_taints = []
         for t in session.tainted_values:
@@ -386,7 +393,13 @@ class SessionAwareTier05:
                     )
 
             # Phase 2: Extract and accumulate behavioral flags
-            normalised_action = _pre_normalise(action)
+            try:
+                from core.action_parser import ActionParser
+                envelope = ActionParser.parse(action).envelope
+            except Exception:
+                envelope = action
+                
+            normalised_action = _pre_normalise(envelope)
             new_flags = self._extract_flags(normalised_action, skip_rce=skip_rce)
             
             # --- PHASE 2.1: Context-Aware Target Verification ---

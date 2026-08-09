@@ -53,7 +53,7 @@ class TestNoLSTMSecurityRegressions(unittest.TestCase):
         signal = check_function_signature("send_money")
         self.assertIsNotNone(signal)
         tier, _ = VotingAggregator.vote([signal])
-        self.assertEqual(tier, ActionTier.QUARANTINE)
+        self.assertEqual(tier, ActionTier.DENY)
 
 
 if __name__ == "__main__":

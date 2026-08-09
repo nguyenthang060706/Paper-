@@ -1,5 +1,6 @@
 import time
 import re
+import ast
 import math
 import threading
 import hashlib
@@ -289,6 +290,19 @@ class PermissionGate:
     
     _semantic_taint_tracker = BoundedSemanticTaintTracker(max_fingerprints=3, similarity_threshold=0.75)
 
+    @staticmethod
+    def _strip_data_content(action: str) -> str:
+        """Strip data payload from tool calls before capability scanning.
+        
+        Uses the Unified Action Parser to reliably extract the envelope of the action,
+        removing large data strings that could trigger false positive capabilities.
+        """
+        try:
+            from core.action_parser import ActionParser
+            parsed = ActionParser.parse(action)
+            return parsed.envelope
+        except Exception:
+            return action
     def __init__(self, default_permissions=None):
         self.default_permissions = set(default_permissions or self.DEFAULT_PERMISSIONS)
         self.capability_patterns = {cap: [re.compile(p, re.IGNORECASE | re.MULTILINE) for p in patterns] for cap, patterns in self.CAPABILITY_PATTERNS.items()}
@@ -342,7 +356,8 @@ class PermissionGate:
         return None
 
     def detect(self, canonicalized_action: str, granted_permissions=None, session=None, enable_provenance=False, skip_rce=False, tool_name=None) -> List[RiskSignal]:
-        required = self.required_permissions(canonicalized_action)
+        scan_text = self._strip_data_content(canonicalized_action)
+        required = self.required_permissions(scan_text)
         if skip_rce:
             required.discard('shell.exec')
             required.discard('fs.delete')
@@ -610,8 +625,17 @@ class VotingAggregator:
         """
         if not signals:
             return (ActionTier.ALLOW, 0.0)
-        if any((s.is_critical for s in signals)):
+            
+        # Pillar B: Corroboration Gate
+        critical_sources = {s.source for s in signals if s.is_critical}
+        if len(critical_sources) >= 2:
             return (ActionTier.QUARANTINE, 1.0)
+        elif len(critical_sources) == 1:
+            # Check for independent corroboration from non-critical signals
+            other_support = sum(s.weighted_score() for s in signals if not s.is_critical)
+            if other_support >= 20:
+                return (ActionTier.QUARANTINE, 0.95)
+            # Without corroboration, single critical signal falls through to score-based thresholds
         
         weighted = ScoreEvo(cls.weighted_score(signals))
         max_sev = ScoreEvo(cls.max_severity(signals))

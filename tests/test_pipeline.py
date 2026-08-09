@@ -128,5 +128,12 @@ class TestUnifiedPipeline(unittest.TestCase):
             self.assertEqual(res["layer"], "V61")
             self.assertEqual(res["heuristics_decision"], "REVIEW")
 
+
+    def test_write_code_content_not_quarantined(self):
+        """Write() containing code with 'password'/'token' should NOT be QUARANTINE."""
+        action = "Write({'file_path': 'd:\\\\CFML\\\\settings.py', 'content': 'TOKEN = os.environ.get(\"TOKEN\")\\nPASSWORD_HASH = bcrypt.hash(input())'})"
+        result = self.pipeline.scan(action, "sess_fp_test", action_type="tool_call")
+        self.assertNotIn(result.get("heuristics_decision"), ["DENY", "QUARANTINE"])
+
 if __name__ == '__main__':
     unittest.main()

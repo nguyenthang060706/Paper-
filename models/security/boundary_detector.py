@@ -22,18 +22,19 @@ class StructuredParser:
         nodes = []
         
         # 1. Try Tool Call format e.g., tool_name(arg1="value", arg2='long string here')
-        # This matches kwargs in typical python-like tool calls.
-        tool_call_pattern = re.compile(r'(\w+)=([\'"])(.*?)\2', re.DOTALL)
-        matched_tool_args = False
-        for match in tool_call_pattern.finditer(text):
-            arg_name = match.group(1)
-            content = match.group(3).strip()
-            if len(content) > 20:
-                nodes.append((f'tool_arg_{arg_name}', content, match.start(3), match.end(3)))
-                matched_tool_args = True
-        
-        if matched_tool_args:
-            return nodes
+        # Only apply this if the text actually looks like a tool call to avoid false positives on HTML attributes
+        if re.match(r'^\s*\w+\s*\(.*\)\s*$', text, re.DOTALL):
+            tool_call_pattern = re.compile(r'(\w+)=([\'"])(.*?)\2', re.DOTALL)
+            matched_tool_args = False
+            for match in tool_call_pattern.finditer(text):
+                arg_name = match.group(1)
+                content = match.group(3).strip()
+                if len(content) > 20:
+                    nodes.append((f'tool_arg_{arg_name}', content, match.start(3), match.end(3)))
+                    matched_tool_args = True
+            
+            if matched_tool_args:
+                return nodes
 
         # 2. Try JSON
         try:

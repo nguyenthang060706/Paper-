@@ -14,6 +14,14 @@ from models.security.feedback_logger import FeedbackLogger
 from models.security.advanced_heuristics import VotingAggregator, RiskSignal, Canonicalizer, PermissionGate, AdaptiveEscalationManager
 from models.security.boundary_detector import InstructionBoundaryDetector
 
+_config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'thresholds.json')
+try:
+    with open(_config_path) as f:
+        _thresholds = json.load(f)
+    _action_review_threshold = _thresholds.get('action_risk_model', {}).get('REVIEW', 0.5577)
+except Exception:
+    _action_review_threshold = 0.5577
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -108,7 +116,7 @@ class UnifiedFirewallPipeline:
         self.feedback_logger = FeedbackLogger()
         self.permission_gate = PermissionGate()
         self.fpr_manager = AdaptiveEscalationManager(
-            target_escalation_rate=0.10, 
+            target_escalation_rate=0.05, 
             initial_threshold=0.72, 
             min_threshold=0.58, 
             warmup_decisions=30
@@ -293,7 +301,7 @@ class UnifiedFirewallPipeline:
                     source='tier05'
                 ))
                 
-            if result.get("ml_score", 0) > 0:
+            if result.get("ml_score", 0) > _action_review_threshold:
                 signals.append(RiskSignal(
                     name='v61_ml_score',
                     severity=int(result["ml_score"] * 100),
@@ -318,11 +326,16 @@ class UnifiedFirewallPipeline:
             # Hard gate decision override
             is_escalation = (result["decision"] != "BLOCK")
             if heuristics_tier.value in ["DENY", "QUARANTINE"]:
-                result["decision"] = "BLOCK"
-                # Only overwrite layer if Heuristics escalated an ALLOW to a BLOCK
-                if is_escalation:
-                    result["layer"] = "Heuristics"
-                result["reason"] = f"[HEURISTICS {heuristics_tier.value}] Aggregated score: {heuristics_score:.2f} - " + result["reason"]
+                is_shell_tool = tool_name and tool_name.lower() in ['bash', 'cmd', 'exec', 'eval', 'python', 'powershell', 'shell']
+                if action_type == "prompt" or is_suspicious_dangerous_tool or is_shell_tool:
+                    result["decision"] = "BLOCK"
+                    if is_escalation:
+                        result["layer"] = "Heuristics"
+                    result["reason"] = f"[HEURISTICS {heuristics_tier.value}] Aggregated score: {heuristics_score:.2f} - " + result["reason"]
+                else:
+                    result["heuristics_decision"] = heuristics_tier.value
+                    result["heuristics_downgraded"] = True
+                    # Do NOT override result["decision"], effectively downgrading to REVIEW
 
         except Exception as e:
             result["heuristics_error"] = str(e)
@@ -333,7 +346,7 @@ class UnifiedFirewallPipeline:
             result["was_shadow_blocked"] = True
             result["shadow_blocked_layer"] = result["layer"]
             result["decision"] = "ALLOW"
-            result["reason"] = f"[SHADOW BLOCK] Hành động lẽ ra đã bị chặn bởi {result['layer']}. " + result["reason"]
+            result["reason"] = f"[SHADOW BLOCK] Action would have been blocked by {result['layer']}. " + result["reason"]
             
         # --- Ghi nhận log ---
         is_real_block = result["decision"] == "BLOCK" or result.get("was_shadow_blocked")

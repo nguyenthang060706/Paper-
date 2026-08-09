@@ -291,7 +291,7 @@ class V61SecurityRouter:
             "score": ml_result["score"],
             "decision": ml_result["decision"],
             "path": "fast-path-ml",
-            "judge_reason": "ML Model đánh giá an toàn/độc hại trực tiếp.",
+            "judge_reason": "ML Model direct safety evaluation.",
             "judge_latency": 0.0,
             "was_review": False,
             "llm_down": False
@@ -456,6 +456,6 @@ class V61SecurityRouter:
             latency = round(time.time() - start_time, 4)
             firewall_mode = os.environ.get("FIREWALL_MODE", "STRICT").upper()
             if firewall_mode == "PERMISSIVE":
-                return "ALLOW", f"[LLM_DOWN] LLM Judge Timeout hoặc Lỗi ({str(e)}). FIREWALL_MODE=PERMISSIVE -> ALLOW.", latency
+                return "ALLOW", f"[LLM_DOWN] LLM Judge Timeout or Error ({str(e)}). FIREWALL_MODE=PERMISSIVE -> ALLOW.", latency
             else:
-                return "BLOCK", f"[LLM_DOWN] LLM Judge Timeout hoặc Lỗi ({str(e)}). FIREWALL_MODE={firewall_mode} -> BLOCK.", latency
+                return "BLOCK", f"[LLM_DOWN] LLM Judge Timeout or Error ({str(e)}). FIREWALL_MODE={firewall_mode} -> BLOCK.", latency
