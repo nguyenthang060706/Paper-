@@ -1,2 +1,2 @@
 ,FPR (%) lower-better,FPR Steady-State (%) lower-better,ABSR Total (%) higher-better,ABSR Single-step (%),ABSR Multi-step Action (%),ABSR Multi-step Session (any-step)%,ABSR Multi-step Session (step1-only)%,Avg Latency (ms) lower-better,Tier 0 Blocks,Tier 0.5-LSTM Blocks,V61 Blocks,Heuristics Blocks
-EVO-PCA Dual Shield (Tier0/0.5 + V61 + Tier0.5-LSTM),3.19,2.51,14.09,13.84,23.21,33.1,33.1,259.48,744.0,0.0,364.0,895.0
+EVO-PCA Dual Shield (Tier0/0.5 + V61 + Tier0.5-LSTM),3.11,2.34,14.36,14.14,22.47,32.04,32.04,263.53,744.0,0.0,403.0,885.0

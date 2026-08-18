@@ -1,8 +1,16 @@
 # %load_ext autoreload
 # %autoreload 2
 
+import os
 import sys
 import io
+
+try:
+    from core.config_loader import load_settings
+    load_settings(override_existing=True)
+except Exception:
+    pass
+
 if sys.stdout and getattr(sys.stdout, 'encoding', '') != 'utf-8':
     try:
         sys.stdout.reconfigure(encoding='utf-8')

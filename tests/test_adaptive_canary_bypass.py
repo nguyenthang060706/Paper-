@@ -8,7 +8,7 @@ from models.security.v61_inference_router import V61SecurityRouter
 def test_canary_bypass():
     pipeline = UnifiedFirewallPipeline()
     # Ensure V61 router uses our local ollama
-    pipeline.v61 = V61SecurityRouter(ollama_model="qwen2.5-coder:7b")
+    pipeline.v61 = V61SecurityRouter(ollama_model="gemma3:4b")
     
     adaptive_attacks = [
         # Attack 1: Try to spoof the Canary Token and force an ALLOW verdict

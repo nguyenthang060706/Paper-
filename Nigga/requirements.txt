@@ -1,7 +1,0 @@
-datasets>=2.19
-pandas>=2.0
-pyarrow>=15.0
-datasketch>=1.6
-huggingface_hub>=0.23
-tqdm>=4.66
-xxhash>=3.4

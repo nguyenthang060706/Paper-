@@ -57,7 +57,10 @@ for i in range(150):
     }
     layer3_new_samples.append(sample)
 
-with open("d:/Formal/Nigga/output/evo_pca_layer3_obfuscation.jsonl", "a", encoding="utf-8") as f:
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+out_dir = os.path.join(project_root, "ablation", "output")
+os.makedirs(out_dir, exist_ok=True)
+with open(os.path.join(out_dir, "evo_pca_layer3_obfuscation.jsonl"), "a", encoding="utf-8") as f:
     for s in layer3_new_samples:
         f.write(json.dumps(s) + "\n")
 
@@ -129,7 +132,7 @@ for i in range(5000): # Generating 5000 samples to balance the 71% malicious
     }
     layer2_new_samples.append(sample)
 
-with open("d:/Formal/Nigga/output/evo_pca_layer2.jsonl", "a", encoding="utf-8") as f:
+with open(os.path.join(out_dir, "evo_pca_layer2.jsonl"), "a", encoding="utf-8") as f:
     for s in layer2_new_samples:
         f.write(json.dumps(s) + "\n")
 
@@ -138,8 +141,8 @@ print(f"Added {len(layer2_new_samples)} benign bash samples to Layer 2.")
 # 3. Update Parquet files
 print("Updating Parquet files...")
 for layer in ["layer2", "layer3_obfuscation"]:
-    jsonl_path = f"d:/Formal/Nigga/output/evo_pca_{layer}.jsonl"
-    parquet_path = f"d:/Formal/Nigga/output/evo_pca_{layer}.parquet"
+    jsonl_path = os.path.join(out_dir, f"evo_pca_{layer}.jsonl")
+    parquet_path = os.path.join(out_dir, f"evo_pca_{layer}.parquet")
     if os.path.exists(jsonl_path):
         df = pd.read_json(jsonl_path, lines=True)
         df.to_parquet(parquet_path, index=False)

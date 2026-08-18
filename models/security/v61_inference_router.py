@@ -15,7 +15,7 @@ try:
 except Exception:
     _settings = {}
 
-_DEFAULT_OLLAMA_TIMEOUT = float(_settings.get("ollama_timeout", 5.0))
+_DEFAULT_OLLAMA_TIMEOUT = float(_settings.get("ollama_timeout", 15.0))
 
 # Cần thiết lập thư mục hiện tại để load model chính xác
 SEC_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -197,6 +197,27 @@ class V61SecurityRouter:
 
             
             print(f"EVO-PCA v61 Router loaded. LLM Judge model: {self.ollama_model}")
+
+    def check_ollama_health(self) -> dict:
+        """
+        Kiểm tra trạng thái kết nối tới dịch vụ Ollama và mô hình chỉ định.
+        """
+        tags_url = f"{self.ollama_host}/api/tags"
+        try:
+            res = self.session.get(tags_url, timeout=3.0)
+            if res.status_code == 200:
+                models = [m.get("name", "") for m in res.json().get("models", [])]
+                has_target = any(self.ollama_model in m for m in models)
+                return {
+                    "status": "OK",
+                    "reachable": True,
+                    "model_available": has_target,
+                    "target_model": self.ollama_model,
+                    "available_models": models
+                }
+            return {"status": "ERROR", "reachable": True, "http_code": res.status_code, "model_available": False}
+        except Exception as e:
+            return {"status": "DOWN", "reachable": False, "error": str(e), "model_available": False}
 
     def reload_models(self):
         """

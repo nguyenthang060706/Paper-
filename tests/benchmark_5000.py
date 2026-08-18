@@ -1,5 +1,5 @@
 """
-Benchmark 3000 diverse samples from evo_pca_full.jsonl (Nigga dataset).
+Benchmark 3000 diverse samples from evo_pca_full.jsonl (Ablation dataset).
 
 Sampling strategy:
 - 1200 benign (balanced sources)

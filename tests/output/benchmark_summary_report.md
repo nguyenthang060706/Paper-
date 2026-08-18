@@ -1,7 +1,7 @@
 # Báo Cáo Kết Quả Benchmark EVO-PCA Dual Shield
 
 **Mô hình đánh giá**: `EVO-PCA Dual Shield (Tier0/0.5 + V61 + Tier0.5-LSTM)`  
-**Tập dữ liệu**: `Nigga Dataset` (v61/v64 action risk model + AgentDojo scenarios)  
+**Tập dữ liệu**: `Ablation Dataset` (v61/v64 action risk model + AgentDojo scenarios)  
 **Thời gian thực thi**: `04/08/2026`
 
 ---
@@ -42,7 +42,7 @@
    - Ở cấp độ Session đa bước (**Multi-step Session**), hệ thống đạt tỷ lệ phát hiện **33.10%**, và đặc biệt là chặn ngay từ **bước 1 (Step 1)** đạt **33.10%**, giúp ngăn chặn cuộc tấn công từ sớm trước khi xảy ra thiệt hại.
 
 3. **Ghi chú về tầng LSTM (Tier 0.5-LSTM)**:
-   - Tầng LSTM đạt 0 block trong bài test này do dữ liệu `AgentDojo / Nigga Dataset` không chứa thông tin thời gian thực (`Inter-Arrival Time - IAT`), khiến tính năng phát hiện bất thường về tốc độ thao tác bị vô hiệu hóa tạm thời.
+   - Tầng LSTM đạt 0 block trong bài test này do dữ liệu `AgentDojo / Ablation Dataset` không chứa thông tin thời gian thực (`Inter-Arrival Time - IAT`), khiến tính năng phát hiện bất thường về tốc độ thao tác bị vô hiệu hóa tạm thời.
 
 ---
 
