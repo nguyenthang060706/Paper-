@@ -1,0 +1,16 @@
+{
+  "h4_session_id_issues": [],
+  "h4_reset_issues": [],
+  "h4b_race_detected": false,
+  "h4b_race_details": [],
+  "h4b_parallel_runs": 5,
+  "tag_coverage": {
+    "total_actions": 61,
+    "tagged_actions": 33,
+    "untagged_pct": 45.9,
+    "sessions_with_no_tags": 2,
+    "total_sessions": 20
+  },
+  "h4_verdict": "NOT_CONFIRMED",
+  "h4b_verdict": "NOT_CONFIRMED"
+}

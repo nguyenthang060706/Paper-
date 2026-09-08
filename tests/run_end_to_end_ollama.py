@@ -28,7 +28,7 @@ def format_tool_call(tool_call):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--max-tasks", type=int, default=124, help="Max tasks to evaluate")
-    parser.add_argument("--model", type=str, default="gemma4:12b", help="Ollama model to use")
+    parser.add_argument("--model", type=str, default="gemma3:4b", help="Ollama model to use")
     args = parser.parse_args()
 
     print("[SYSTEM] Loading AgentDojo Suites...")

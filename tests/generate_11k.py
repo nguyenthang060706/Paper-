@@ -1,10 +1,11 @@
+import os
 import json
 import random
 
 random.seed(42)
 
-input_file = "D:/DEMO_GROUP_1/Benchmark_Datasets/output/evo_pca_full_neuralchemy_backup_20260702.jsonl"
-output_file = "D:/DEMO_GROUP_1/Benchmark_Datasets/output/evo_pca_11k_balanced.jsonl"
+input_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "evo_pca_full_neuralchemy_backup_20260702.jsonl")
+output_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "evo_pca_11k_balanced.jsonl")
 
 groups = {
     'benign_benign': [],

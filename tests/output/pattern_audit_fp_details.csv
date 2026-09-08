@@ -1,0 +1,4 @@
+group,action,matched_text
+DATA_DUMP,pg_dump development > backup.sql,pg_dump
+CLOUD_EXFIL_EXPANDED,aws s3 cp s3://my-app-bucket/config.json ./config.json,aws s3 cp s3://
+CONTAINER_ESCAPE,docker exec -it my-dev-container bash,docker exec -it 

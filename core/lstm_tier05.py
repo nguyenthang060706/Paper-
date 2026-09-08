@@ -1,7 +1,17 @@
 import os
 import time
 from types import SimpleNamespace
+import json
 from core.tier_lstm import SessionAwareLSTMRisk, LSTM_BLOCK_THRESHOLD
+
+def _load_lstm_config():
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "thresholds.json")
+        with open(config_path, "r") as f:
+            data = json.load(f)
+            return data.get("tier05_lstm", {})
+    except Exception:
+        return {}
 
 class LSTMTier05Wrapper:
     """
@@ -11,14 +21,29 @@ class LSTMTier05Wrapper:
     def __init__(self, fallback_tier05, use_synthetic_iat: bool = False):
         self.fallback = fallback_tier05
         
+        # Production safety: synthetic IAT is for offline benchmarks ONLY.
+        # In production, wall-clock inter-arrival time is the ground-truth temporal signal.
+        if use_synthetic_iat:
+            import warnings
+            warnings.warn(
+                "[PRODUCTION SAFETY] use_synthetic_iat=True is for OFFLINE BENCHMARK ONLY. "
+                "In production, set use_synthetic_iat=False to use real wall-clock IAT.",
+                UserWarning, stacklevel=2
+            )
+        
+        # Load configs
+        lstm_cfg = _load_lstm_config()
+        self.block_threshold = float(lstm_cfg.get("block_threshold", LSTM_BLOCK_THRESHOLD))
+        self.confidence_floor = float(lstm_cfg.get("confidence_propagation_floor", 0.50))
+        
         # Resolve path robustly relative to this file
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         tier05_path = os.path.join(base_dir, "models", "artifacts", "v90_tier_0_5_session_risk.pth")
         
-        print("[LSTM-Tier0.5] Initializing Neural Network Shield from tier_lstm.py...")
+        print(f"[LSTM-Tier0.5] Initializing Neural Network Shield from tier_lstm.py (block_threshold={self.block_threshold})...")
         self.lstm_risk = SessionAwareLSTMRisk(
             model_path=tier05_path,
-            block_threshold=LSTM_BLOCK_THRESHOLD, # Uses configuration default (0.98)
+            block_threshold=self.block_threshold,
             use_synthetic_iat=use_synthetic_iat
         )
         
@@ -56,7 +81,7 @@ class LSTMTier05Wrapper:
         # 4. Merge results
         if lstm_res.get("is_blocked", False):
             confidence = lstm_res.get("probability", 0.99)
-            print(f"[LSTM-Tier0.5] 🚨 BLOCKED Session {session_id}! Confidence: {confidence*100:.2f}%")
+            print(f"[LSTM-Tier0.5] [BLOCKED] Session {session_id}! Confidence: {confidence*100:.2f}%")
             return SimpleNamespace(
                 is_blocked=True,
                 decision=SimpleNamespace(value="BLOCK"),
@@ -67,9 +92,16 @@ class LSTMTier05Wrapper:
                 normalized_action=action
             )
             
-        # Pass through the fallback result but with updated confidence
-        lstm_conf = lstm_res.get("probability", 0.0)
-        fallback_res.confidence = max(getattr(fallback_res, 'confidence', 0.0), lstm_conf)
+        # [E7 Round 2 FIX] Confidence Contamination Leak
+        # In decoupled mode, LSTM MUST NOT inject its confidence into the fallback result.
+        # Doing so contaminates Tier0/V61's RiskSignals and causes Heuristics to block,
+        # elevating the FPR even if the adaptive threshold isn't escalated.
+        escalation_mode = os.environ.get("ESCALATION_FEEDBACK_MODE", "decoupled").lower()
+        if escalation_mode == "legacy":
+            lstm_conf = lstm_res.get("probability", 0.0)
+            if lstm_conf >= self.confidence_floor:
+                fallback_res.confidence = max(getattr(fallback_res, 'confidence', 0.0), lstm_conf)
+                
         return fallback_res
 
     def get_session_report(self, session_id: str):
@@ -77,3 +109,14 @@ class LSTMTier05Wrapper:
         
     def get_session_ref(self, session_id: str):
         return self.fallback.get_session_ref(session_id)
+
+    def register_taint(self, session, raw_data, decision, tool_name="unknown"):
+        if hasattr(self.fallback, 'register_taint'):
+            return self.fallback.register_taint(session, raw_data, decision, tool_name)
+
+    def register_trusted_lookup(self, session, raw_data, tool_name="unknown"):
+        if hasattr(self.fallback, 'register_trusted_lookup'):
+            return self.fallback.register_trusted_lookup(session, raw_data, tool_name)
+
+    def __getattr__(self, name):
+        return getattr(self.fallback, name)

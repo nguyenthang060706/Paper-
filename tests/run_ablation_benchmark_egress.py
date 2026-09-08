@@ -1,12 +1,11 @@
-def run_egress_benchmark():
+import os
+﻿def run_egress_benchmark():
     import json, time, os
     from core.pipeline import UnifiedFirewallPipeline
     pipeline = UnifiedFirewallPipeline()
     records = []
     try:
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        dataset_path = os.path.join(project_root, "ablation", "output", "evo_pca_full.jsonl")
-        with open(dataset_path, "r", encoding="utf-8") as f:
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "evo_pca_full_neuralchemy_backup_20260702.jsonl"), "r", encoding="utf-8") as f:
             for line in f:
                 records.append(json.loads(line))
     except Exception as e:

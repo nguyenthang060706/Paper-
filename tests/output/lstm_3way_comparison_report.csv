@@ -1,0 +1,4 @@
+Config,FPR (%),ABSR Total (%),ABSR Single-step (%),ABSR Multi-step Action (%),ABSR Multi-step Session (%),Avg Latency (ms),p95 Latency (ms),Tier0 Blocks,LSTM Blocks,V61 Blocks,Heuristics Blocks,Final Adaptive Threshold
+Config A (LSTM OFF),2.19,17.18,16.83,21.74,21.74,272.92,877.23,22,0,8,18,0.58
+Config B (LSTM ON + Bug),6.93,34.36,35.31,21.74,21.74,303.4,960.06,22,0,7,88,0.95
+Config C (LSTM ON + Fixed),2.19,17.18,16.83,21.74,21.74,283.52,917.31,22,0,8,18,0.58

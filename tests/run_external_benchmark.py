@@ -1,16 +1,8 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import os
 import sys
 import io
-
-try:
-    from core.config_loader import load_settings
-    load_settings(override_existing=True)
-except Exception:
-    pass
-
 if sys.stdout and getattr(sys.stdout, 'encoding', '') != 'utf-8':
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -29,6 +21,12 @@ if xgboost.__version__ != '2.0.3':
 
 import hashlib
 import os
+
+try:
+    from core.config_loader import load_settings
+    load_settings(override_existing=True)
+except Exception as e:
+    print(f"[WARN] Failed to auto-load settings: {e}")
 
 # SECURITY: do NOT hardcode tokens in the notebook.
 # Set HF_TOKEN in the environment before running, or use `huggingface-cli login`.
@@ -4364,7 +4362,7 @@ class UnifiedLlamaFirewall_Agent:
     of running this LSTM (trained on richer multi-agent session telemetry)
     against this benchmark's linear, replayed AgentDojo dataset.
     """
-    NAME = 'EVO-PCA Dual Shield (Tier0/0.5 + V61 + Tier0.5-LSTM)'
+    NAME = 'EVO-PCA Multi-Step Hardened Pipeline (Tier0 + State-Machine + V61 + Session Judge)'
 
     def __init__(self):
         from core.pipeline import UnifiedFirewallPipeline
@@ -4443,6 +4441,8 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
         tp_single = fp = tn = fn_single = 0
         tp_multi  = fn_multi = 0
         tier0_blocks = 0
+        multistep_heuristics_blocks = 0
+        session_judge_blocks = 0
         lstm_blocks = 0
         v61_blocks = 0
         heuristics_blocks = 0
@@ -4608,7 +4608,8 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
             'ABSR Multi-step Session (step1-only)%' : round(absr_multi_session_early, 2),
             'Avg Latency (ms) lower-better'         : round(avg_lat, 2),
             'Tier 0 Blocks'                         : tier0_blocks,
-            'Tier 0.5-LSTM Blocks'                  : lstm_blocks,
+            'Multi-Step Heuristics Blocks'          : multistep_heuristics_blocks,
+            'LLM Session Judge Blocks'              : session_judge_blocks,
             'V61 Blocks'                            : v61_blocks,
             'Heuristics Blocks'                     : heuristics_blocks,
         }
@@ -4622,7 +4623,8 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
             f'session_step1={absr_multi_session_early:.1f}%  '
             f'lat={avg_lat:.1f}ms'
             + (f'  tier0={tier0_blocks}' if tier0_blocks else '')
-            + (f'  lstm={lstm_blocks}' if lstm_blocks else '')
+            + (f'  multi_step={multistep_heuristics_blocks}' if multistep_heuristics_blocks else '')
+            + (f'  session_judge={session_judge_blocks}' if session_judge_blocks else '')
             + (f'  v61={v61_blocks}' if v61_blocks else '')
             + (f'  heuristics={heuristics_blocks}' if heuristics_blocks else '')
         )
@@ -4670,12 +4672,10 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
 def main():
     import json, random
     dataset = []
-    with open("D:/DEMO_GROUP_1/Benchmark_Datasets/output/evo_pca_5k_sampled_fixed.jsonl", "r", encoding="utf-8") as f:
+    with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "evo_pca_11k_balanced.jsonl"), "r", encoding="utf-8") as f:
         for line in f:
-            if len(dataset) >= 2000:
-                break
             dataset.append(json.loads(line))
-    print("Loaded " + str(len(dataset)) + " records from external dataset (capped at 2000).")
+    print("Loaded " + str(len(dataset)) + " records from external dataset.")
     all_sids = set(r.get("session_id") for r in dataset)
     malicious_sids = set(r.get("session_id") for r in dataset if r.get("attack_type") in ("malicious_single", "malicious_multistep"))
     session_rate = len(malicious_sids) / len(all_sids) if all_sids else 0.0
@@ -4696,7 +4696,7 @@ def run_egress_benchmark():
     pipeline = UnifiedFirewallPipeline(use_synthetic_iat=True)
     records = []
     try:
-        with open("D:/DEMO_GROUP_1/Benchmark_Datasets/output/evo_pca_11k_balanced.jsonl", "r", encoding="utf-8") as f:
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "evo_pca_11k_balanced.jsonl"), "r", encoding="utf-8") as f:
             for line in f:
                 records.append(json.loads(line))
     except Exception as e:

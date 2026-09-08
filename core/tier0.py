@@ -145,8 +145,20 @@ _LEET_TRANS = str.maketrans({
     ord('6'): 'g', ord('8'): 'b',
 })
 _HOMOGLYPH_TRANS = str.maketrans({
-    ord('а'): 'a', ord('о'): 'o', ord('е'): 'e', ord('с'): 'c',
-    ord('р'): 'p', ord('х'): 'x', ord('у'): 'y', ord('і'): 'i'
+    # Cyrillic
+    ord('а'): 'a', ord('А'): 'A', ord('в'): 'b', ord('В'): 'B', ord('е'): 'e', ord('Е'): 'E',
+    ord('о'): 'o', ord('О'): 'O', ord('р'): 'p', ord('Р'): 'P', ord('с'): 'c', ord('С'): 'C',
+    ord('т'): 't', ord('Т'): 'T', ord('х'): 'x', ord('Х'): 'X', ord('у'): 'y', ord('У'): 'Y',
+    ord('і'): 'i', ord('І'): 'I', ord('ї'): 'i', ord('Ї'): 'I', ord('к'): 'k', ord('К'): 'K',
+    ord('м'): 'm', ord('М'): 'M', ord('н'): 'h', ord('Н'): 'H', ord('ԁ'): 'd', ord('ԛ'): 'q',
+    ord('ѕ'): 's', ord('Ѕ'): 'S',
+    # Greek
+    ord('α'): 'a', ord('Α'): 'A', ord('β'): 'b', ord('Β'): 'B', ord('γ'): 'y', ord('ε'): 'e',
+    ord('Ε'): 'E', ord('ι'): 'i', ord('Ι'): 'I', ord('κ'): 'k', ord('Κ'): 'K', ord('ν'): 'v',
+    ord('ο'): 'o', ord('Ο'): 'O', ord('ρ'): 'p', ord('Ρ'): 'P', ord('τ'): 't', ord('Τ'): 'T',
+    ord('υ'): 'u', ord('χ'): 'x', ord('Χ'): 'X',
+    # Currency / Symbols
+    ord('€'): 'e', ord('¢'): 'c', ord('£'): 'l', ord('¥'): 'y', ord('₽'): 'p', ord('₹'): 'r',
 })
 
 def _pre_normalise(text: str) -> str:
@@ -322,14 +334,35 @@ _RAW_PATTERNS: List[Tuple[str, ScanDecision, str]] = [
      ScanDecision.MONITOR, 'task_hijack_instead'),
     (r'(?:^|\n)\s*(?:Actually|BTW|By the way|PS|P\.S\.|FYI)\s*[,:]?\s*(?:please\s+)?(?:ignore|forget|disregard|override)\s+(?:all\s+)?(?:previous\s+)?(?:system\s+prompts?|your\s+instructions?|core\s+rules?)',
      ScanDecision.MONITOR, 'conversational_injection'),
-    # ── Vietnamese patterns (Giai đoạn 1) ─────────────────────────────────────
+    # ── Vietnamese & Multilingual Patterns ───────────────────────────────────
     (r'\b(bo qua|quen|huy bo)\s+(tat ca\s+)?(huong dan|cau lenh|luat le)\s+(truoc|cu|truoc do)\b',
      ScanDecision.BLOCK, 'override_instructions_vi'),
     (r'\bb\S*\s+qua\s+h\S*ng\s+d\S*n\s+tr\S*c\b',
      ScanDecision.BLOCK, 'override_instructions_vi_mojibake'),
     (r'\b(bo qua|quen|huy bo)\s+chi thi\b',
      ScanDecision.BLOCK, 'override_instructions_vi'),
-    # [FIX6-6] leet entry removed from _RAW_PATTERNS; compiled separately as _LEET_PATTERN
+    (r'(?i)\b(?:상황이\s+바뀌었기\s+때문에|이전\s+지시\s*사항을\s*무시|반드시\s+나에게\s*메일을\s*보내)',
+     ScanDecision.BLOCK, 'override_instructions_ko'),
+
+    # ── Python Introspection, Deserialization & RCE Patterns (Phase 1 Fix) ──
+    (r'(?i)\b(?:__builtins__|__globals__|__subclasses__|__code__|__class__)\b',
+     ScanDecision.BLOCK, 'python_introspection'),
+    (r'(?i)\b(?:eval|exec|compile)\s*\(\s*(?:globals\(\)|locals\(\)|__import__|getattr|input)\b',
+     ScanDecision.BLOCK, 'dynamic_code_exec'),
+    (r'(?i)\b(?:pickle|marshal|shelve)\.loads?\b',
+     ScanDecision.BLOCK, 'unsafe_deserialization'),
+    (r'(?i)\bos\.system\s*\(|\bsubprocess\.(?:Popen|call|run|check_output)\s*\(',
+     ScanDecision.BLOCK, 'os_command_injection'),
+    (r'(?i)\b(?:reveal|leak|dump|exfiltrate)\s+(?:all\s+)?(?:tokens?|api[_\s-]?keys?|credentials?|passwords?|secrets?|globals?)\b',
+     ScanDecision.BLOCK, 'secret_leak_intent'),
+
+    # ── Tag Spoofing & Delimiter Breakout Patterns (Phase 1 Fix) ────────────
+    (r'(?i)</?(?:tool|user|system(?:-instruction|-prompt)?|context_override|instruction|override)\s*>',
+     ScanDecision.BLOCK, 'tag_spoofing_injection'),
+    (r'(?i)(?:\[SYSTEM\s*(?:INSTRUCTION|PROMPT|OVERRIDE)?\]|\[INSTRUCTION\]|###\s*(?:System|User|Human|Assistant)\s*:)',
+     ScanDecision.BLOCK, 'delimiter_spoofing_injection'),
+    (r'(?i)test\s+message\s*#+\s*summarize\s+finished\s*#+',
+     ScanDecision.BLOCK, 'task_delimiter_injection'),
 ]
 
 # Standard compiled patterns (match against post-normalised string)

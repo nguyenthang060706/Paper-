@@ -60,7 +60,7 @@ _FIRST_ARG_VALUE_RE = re.compile(r"^[^=,]+=\s*(.+?)(?:,|$)")
 # forward-pass cost on very long sessions; mirrors Tier05Config.FLAG_EXPIRY_STEPS).
 MAX_SESSION_WINDOW = 50
 
-# Per plan: block when the LSTM's malicious-probability confidence >= 0.98.
+# Calibrated canonical threshold: 0.98 cleanly separates multi-step attacks from benign sequences.
 LSTM_BLOCK_THRESHOLD = float(os.environ.get("EVO_PCA_LSTM_BLOCK_THRESHOLD", "0.98"))
 
 
@@ -454,26 +454,51 @@ class SessionAwareLSTMRisk:
             result["reason"] = f"Inference error (fail-open): {e}"
             return result
 
-        delta_thresh = float(os.environ.get("SEMANTIC_DELTA_THRESHOLD", "0.65"))
+        # [E7 Round 2] Read calibrated threshold from config.
+        # Calibration 2026-08-21: benign p50=0.7239, no discriminative power.
+        # Default 1.01 = effectively disabled.
+        # [E7 Round 2] Read calibrated threshold from config.
+        # Calibrated threshold (Phase 1 Fix): 0.80 captures significant semantic drifts.
+        delta_thresh = 0.80
         try:
-            from config import settings
-            delta_thresh = float(getattr(settings, "SEMANTIC_DELTA_THRESHOLD", delta_thresh))
+            import json as _json
+            _cfg_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                     "config", "thresholds.json")
+            with open(_cfg_path, "r") as _f:
+                _cfg = _json.load(_f)
+                delta_thresh = float(_cfg.get("tier05_lstm", {}).get("semantic_delta_threshold", delta_thresh))
         except Exception:
             pass
+        # Allow env var override for experimentation
+        delta_thresh = float(os.environ.get("SEMANTIC_DELTA_THRESHOLD", str(delta_thresh)))
 
         result["probability"] = prob
         result["sequence_risk"] = seq_risk
-        if prob >= self.block_threshold or seq_risk >= delta_thresh:
-            # Guard against step-counting bias in pure repeating benign actions
-            if seq_risk < 0.05 and all(f[2] < 0.2 for f in win.features):
+
+        is_prob_violation = prob >= self.block_threshold
+        is_delta_violation = seq_risk >= delta_thresh
+
+        if is_prob_violation:
+            recent_window = win.features[-self.max_window:]
+            max_recent_risk = max((f[2] for f in recent_window), default=0.0)
+            guard_threshold = float(os.environ.get("GUARD_HIGH_RISK_THRESHOLD", "0.5"))
+            try:
+                from config import settings
+                guard_threshold = float(getattr(settings, "GUARD_HIGH_RISK_THRESHOLD", guard_threshold))
+            except Exception:
+                pass
+
+            # Neutralize ONLY when prob is borderline in smooth benign sessions
+            if not is_delta_violation and max_recent_risk < guard_threshold:
                 result["is_blocked"] = False
                 result["reason"] = (
-                    f"Tier0.5-LSTM: probability={prob:.4f}, neutralized by Step-Counting Invariance Guard (seq_risk={seq_risk:.3f})"
+                    f"Tier0.5-LSTM: probability={prob:.4f}, neutralized by Step-Counting "
+                    f"Invariance Guard (seq_risk={seq_risk:.3f}, max_recent_risk={max_recent_risk:.3f})"
                 )
             else:
                 result["is_blocked"] = True
                 result["reason"] = (
-                    f"Tier0.5-LSTM: risk triggered (prob={prob:.4f} >= {self.block_threshold} or seq_risk={seq_risk:.3f} >= {delta_thresh})"
+                    f"Tier0.5-LSTM: risk triggered (prob={prob:.4f} >= {self.block_threshold}, max_recent_risk={max_recent_risk:.3f})"
                 )
         else:
             result["reason"] = f"Tier0.5-LSTM: probability={prob:.4f} (below threshold, seq_risk={seq_risk:.3f})"

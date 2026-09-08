@@ -1,7 +1,10 @@
-# EVO-PCA settings
+# EVO-PCA Settings
 ollama_model: "gemma3:4b"
 ollama_timeout: 15.0
 firewall_mode: "STRICT"
 ollama_base_url: "http://localhost:11434"
-semantic_delta_threshold: 0.65
-sequence_risk_gain: 1.2
+multi_step_heuristics_enabled: true
+llm_session_judge_enabled: true
+llm_session_judge_timeout: 5.0
+llm_session_history_window: 8
+guard_high_risk_threshold: "0.5"

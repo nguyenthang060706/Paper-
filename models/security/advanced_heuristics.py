@@ -1,3 +1,4 @@
+import os
 import time
 import re
 import ast
@@ -46,6 +47,7 @@ class AdaptiveEscalationManager:
 
     _threshold: float = field(init=False)
     _decisions: list = field(default_factory=list)
+    _telemetry_trace: list = field(default_factory=list)
     _total_decisions: int = field(default=0, init=False)
     _consecutive_violation: int = field(default=0, init=False)
 
@@ -55,17 +57,37 @@ class AdaptiveEscalationManager:
         self._threshold = self.initial_threshold
         from collections import deque
         self._decisions = deque(maxlen=self.window_size)
+        self._telemetry_trace = []
         self._consecutive_violation = 0
 
     @property
     def adaptive_threshold(self) -> float:
         return self._threshold
 
-    def record_decision(self, is_escalated: bool) -> None:
+    def record_decision(self, is_escalated: bool, layer: str = "unknown") -> None:
         self._decisions.append(is_escalated)
         self._total_decisions += 1
+        
+        window = list(self._decisions)
+        esc_rate = sum(window) / len(window) if window else 0.0
+        
         if self._total_decisions >= self.warmup_decisions and self._total_decisions % 10 == 0:
             self._adjust_threshold()
+            
+        self._telemetry_trace.append({
+            'decision_idx': self._total_decisions,
+            'layer': layer,
+            'is_escalated': is_escalated,
+            'escalation_rate': round(esc_rate, 4),
+            'adaptive_threshold': round(self._threshold, 4)
+        })
+
+    def export_telemetry_trace(self, filepath: str) -> None:
+        import pandas as pd
+        if self._telemetry_trace:
+            df = pd.DataFrame(self._telemetry_trace)
+            os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
+            df.to_csv(filepath, index=False)
 
     def _adjust_threshold(self) -> None:
         window = list(self._decisions)
@@ -114,6 +136,61 @@ class AdaptiveEscalationManager:
                 f"esc_rate={m['escalation_rate']:.3f}/{self.target_escalation_rate}, "
                 f"decisions={m['total_decisions']}")
 
+
+@dataclass
+class LSTMSafetyMonitor:
+    """
+    Dedicated monitor for Tier 0.5-LSTM decisions.
+    Prevents blind spots without polluting V61 thresholds.
+    """
+    window_size: int = 100
+    benign_block_rate_alert_threshold: float = 0.40
+    median_confidence_alert_threshold: float = 0.95
+    
+    _decisions: list = field(default_factory=list)
+    _confidences: list = field(default_factory=list)
+    _total_decisions: int = field(default=0, init=False)
+    _alert_active: bool = field(default=False, init=False)
+    
+    def __post_init__(self):
+        from collections import deque
+        self._decisions = deque(maxlen=self.window_size)
+        self._confidences = deque(maxlen=self.window_size)
+        self._alert_active = False
+
+    def record_lstm_decision(self, result: dict, actual_label: bool = None) -> None:
+        is_blocked = result.get("decision") in ("BLOCK", "QUARANTINE") or result.get("is_blocked", False)
+        conf = float(result.get("confidence", result.get("ml_score", 0.0)))
+        
+        self._decisions.append(is_blocked)
+        self._confidences.append(conf)
+        self._total_decisions += 1
+        
+        if len(self._decisions) >= 30 and self._total_decisions % 10 == 0:
+            self._check_health()
+            
+    def _check_health(self) -> None:
+        import numpy as np
+        block_rate = sum(self._decisions) / len(self._decisions) if self._decisions else 0.0
+        med_conf = float(np.median(self._confidences)) if self._confidences else 0.0
+        
+        if block_rate >= self.benign_block_rate_alert_threshold or med_conf >= self.median_confidence_alert_threshold:
+            self._alert_active = True
+        else:
+            self._alert_active = False
+
+    def is_degraded(self) -> bool:
+        return self._alert_active
+
+    def get_metrics(self) -> dict:
+        import numpy as np
+        return {
+            "total_decisions": self._total_decisions,
+            "rolling_block_rate": round(sum(self._decisions) / len(self._decisions), 4) if self._decisions else 0.0,
+            "median_confidence": round(float(np.median(self._confidences)), 4) if self._confidences else 0.0,
+            "is_degraded": self._alert_active
+        }
+
 class ActionTier(str, Enum):
     ALLOW = 'ALLOW'
     MONITOR = 'MONITOR'
@@ -145,7 +222,22 @@ class Canonicalizer:
     HEX_ESCAPE_RE = re.compile('\\\\x([0-9a-fA-F]{2})')
     UNICODE_ESCAPE_RE = re.compile('\\\\u([0-9a-fA-F]{4})')
     LEET_TRANS = str.maketrans({'0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '6': 'g', '7': 't', '8': 'b', '9': 'g', '@': 'a', '$': 's', '!': 'i', '+': 't', '|': 'i'})
-    HOMOGLYPHS = str.maketrans({'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'х': 'x', 'α': 'a', 'β': 'b'})
+    HOMOGLYPHS = str.maketrans({
+        # Cyrillic
+        'а': 'a', 'А': 'A', 'в': 'b', 'В': 'B', 'е': 'e', 'Е': 'E',
+        'о': 'o', 'О': 'O', 'р': 'p', 'Р': 'P', 'с': 'c', 'С': 'C',
+        'т': 't', 'Т': 'T', 'х': 'x', 'Х': 'X', 'у': 'y', 'У': 'Y',
+        'і': 'i', 'І': 'I', 'ї': 'i', 'Ї': 'I', 'к': 'k', 'К': 'K',
+        'м': 'm', 'М': 'M', 'н': 'h', 'Н': 'H', 'ԁ': 'd', 'ԛ': 'q',
+        'ѕ': 's', 'Ѕ': 'S',
+        # Greek
+        'α': 'a', 'Α': 'A', 'β': 'b', 'Β': 'B', 'γ': 'y', 'ε': 'e',
+        'Ε': 'E', 'ι': 'i', 'Ι': 'I', 'κ': 'k', 'Κ': 'K', 'ν': 'v',
+        'ο': 'o', 'Ο': 'O', 'ρ': 'p', 'Ρ': 'P', 'τ': 't', 'Τ': 'T',
+        'υ': 'u', 'χ': 'x', 'Χ': 'X',
+        # Currency / Symbols
+        '€': 'e', '¢': 'c', '£': 'l', '¥': 'y', '₽': 'p', '₹': 'r'
+    })
 
     @classmethod
     def canonicalize(cls, action: str) -> str:
@@ -355,7 +447,7 @@ class PermissionGate:
                     return token
         return None
 
-    def detect(self, canonicalized_action: str, granted_permissions=None, session=None, enable_provenance=False, skip_rce=False, tool_name=None) -> List[RiskSignal]:
+    def detect(self, canonicalized_action: str, granted_permissions=None, session=None, enable_provenance=False, skip_rce=False, tool_name=None, is_suspicious_dangerous_tool: bool = False) -> List[RiskSignal]:
         scan_text = self._strip_data_content(canonicalized_action)
         required = self.required_permissions(scan_text)
         if skip_rce:
@@ -371,6 +463,11 @@ class PermissionGate:
                 from models.security.function_risk_registry import check_function_signature
                 sig_signal = check_function_signature(tool_name)
                 if sig_signal:
+                    # Migrated from pipeline.py: downgrade is_critical for
+                    # non-suspicious tools to prevent single high-risk function
+                    # names from escalating benign tool calls to QUARANTINE.
+                    if not is_suspicious_dangerous_tool:
+                        sig_signal.is_critical = False
                     signals.append(sig_signal)
             except Exception as e:
                 logger.error(f"Error checking function signature for {tool_name}: {e}", exc_info=True)
@@ -428,19 +525,33 @@ class SharedSemanticEncoder:
     __lock = threading.Lock()
     _encoder = None
     _load_error = False
+    _load_attempts = 0
+    _max_attempts = 3
+    _last_attempt_time = 0
 
     @classmethod
     def get(cls):
         if cls._encoder is None and not cls._load_error:
             with cls.__lock:
                 if cls._encoder is None and not cls._load_error:
+                    now = time.time()
+                    # Exponential backoff: 2^attempts seconds
+                    backoff = 2 ** cls._load_attempts
+                    if now - cls._last_attempt_time < backoff and cls._load_attempts > 0:
+                        return None
+                        
+                    cls._last_attempt_time = now
                     try:
                         from sentence_transformers import SentenceTransformer
                         cls._encoder = SentenceTransformer("all-MiniLM-L6-v2")
                         logger.info("[SharedSemanticEncoder] Successfully loaded all-MiniLM-L6-v2.")
+                        cls._load_attempts = 0 # reset on success
                     except Exception as e:
-                        logger.error(f"[SharedSemanticEncoder] Failed to load SentenceTransformer: {e}")
-                        cls._load_error = True
+                        cls._load_attempts += 1
+                        logger.error(f"[SharedSemanticEncoder] Failed to load SentenceTransformer (attempt {cls._load_attempts}/{cls._max_attempts}): {e}")
+                        if cls._load_attempts >= cls._max_attempts:
+                            logger.error("[SharedSemanticEncoder] Max retries reached. Failing open permanently.")
+                            cls._load_error = True
         return cls._encoder
 
     @classmethod
@@ -463,6 +574,12 @@ class SemanticCamouflageDetector:
                     cls.__instance._initialize()
         return cls.__instance
         
+    @classmethod
+    def reset_instance(cls):
+        """Force re-creation on next construction. Call between Ablation Study configs."""
+        with cls.__instance_lock:
+            cls.__instance = None
+
     def _initialize(self):
         self.inference_lock = threading.Lock()
         self.dangerous_patterns = [
@@ -608,33 +725,41 @@ class VotingAggregator:
         return cls.get_threshold("MONITOR", 40)
 
     @classmethod
-    def vote(cls, signals: List[RiskSignal]) -> Tuple[ActionTier, float]:
+    def vote(cls, signals: List[RiskSignal]) -> Tuple[ActionTier, float, List[RiskSignal]]:
         """
         Aggregate signals into decision tier.
 
+        Returns (ActionTier, score, contributing_signals).
+        The third element is the list of signals that contributed to the
+        decision — the caller MUST use this for signal-attribution gating
+        (e.g. checking if any contributor has source=='tier05' to prevent
+        indirect LSTM feedback contamination of fpr_manager).
+
         FIX v3.6c (BUG-1 FIX — VotingAggregator inconsistency):
-        Thêm score-based QUARANTINE path (>= 90) d? d?ng b? với v3.8.
-        Critical hard-gate gi? nguyên: is_critical ? QUARANTINE ngay.
+        Thêm score-based QUARANTINE path (>= 90) để đồng bộ với v3.8.
+        Critical hard-gate giữ nguyên: is_critical → QUARANTINE ngay.
         Thresholds:
-        1. is_critical=True                  ? QUARANTINE (hard gate)
-        2. weighted_score >= 90              ? QUARANTINE (score path, m?i)
-        3. weighted_score >= 82 AND max > 85 ? DENY
-        4. weighted_score >= 68 OR  max > 75 ? REVIEW
-        5. weighted_score >= 40              ? MONITOR
-        6. Otherwise                         ? ALLOW
+        1. is_critical=True                  → QUARANTINE (hard gate)
+        2. weighted_score >= 90              → QUARANTINE (score path)
+        3. weighted_score >= 82 AND max > 85 → DENY
+        4. weighted_score >= 68 OR  max > 75 → REVIEW
+        5. weighted_score >= 40              → MONITOR
+        6. Otherwise                         → ALLOW
         """
         if not signals:
-            return (ActionTier.ALLOW, 0.0)
+            return (ActionTier.ALLOW, 0.0, [])
             
         # Pillar B: Corroboration Gate
         critical_sources = {s.source for s in signals if s.is_critical}
         if len(critical_sources) >= 2:
-            return (ActionTier.QUARANTINE, 1.0)
+            contributors = [s for s in signals if s.is_critical]
+            return (ActionTier.QUARANTINE, 1.0, contributors)
         elif len(critical_sources) == 1:
             # Check for independent corroboration from non-critical signals
             other_support = sum(s.weighted_score() for s in signals if not s.is_critical)
             if other_support >= 20:
-                return (ActionTier.QUARANTINE, 0.95)
+                contributors = [s for s in signals if s.is_critical or s.weighted_score() > 0]
+                return (ActionTier.QUARANTINE, 0.95, contributors)
             # Without corroboration, single critical signal falls through to score-based thresholds
         
         weighted = ScoreEvo(cls.weighted_score(signals))
@@ -644,15 +769,18 @@ class VotingAggregator:
         r_thresh = ScoreEvo(cls.REVIEW_THRESHOLD())
         m_thresh = ScoreEvo(cls.MONITOR_THRESHOLD())
         
+        # Collect contributing signals: those with non-zero weighted_score
+        contributors = [s for s in signals if s.weighted_score() > 0]
+        
         if weighted >= q_thresh:
-            return (ActionTier.QUARANTINE, min(float(weighted) / 100, 1.0))
+            return (ActionTier.QUARANTINE, min(float(weighted) / 100, 1.0), contributors)
         if weighted >= d_thresh and max_sev > ScoreEvo(85):
-            return (ActionTier.DENY, min(float(weighted) / 100, 1.0))
+            return (ActionTier.DENY, min(float(weighted) / 100, 1.0), contributors)
         if weighted >= r_thresh or max_sev > ScoreEvo(75):
-            return (ActionTier.REVIEW, min(max(float(weighted) / 75, 0.5), 1.0))
+            return (ActionTier.REVIEW, min(max(float(weighted) / 75, 0.5), 1.0), contributors)
         if weighted >= m_thresh:
-            return (ActionTier.MONITOR, min(float(weighted) / float(r_thresh), 0.99))
-        return (ActionTier.ALLOW, max(0.0, 1.0 - float(weighted) / 100))
+            return (ActionTier.MONITOR, min(float(weighted) / float(r_thresh), 0.99), contributors)
+        return (ActionTier.ALLOW, max(0.0, 1.0 - float(weighted) / 100), [])
 
     @classmethod
     def explain(cls, tier: ActionTier, signals: List[RiskSignal]) -> str:

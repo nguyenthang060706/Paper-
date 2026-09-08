@@ -1,5 +1,16 @@
+import os
+
+# ─── Configuration C env vars (must match benchmark_3000.py) ───
+# These were missing, causing LSTM/MultiStep/SessionJudge layers to be
+# disabled — making benchmark_5000 results incomparable with benchmark_3000.
+# See: kiem_tra_tich_hop_he_thong.md Bước 0b, Q2 resolution.
+os.environ["TIER05_LSTM_ENABLED"] = "true"
+os.environ["ESCALATION_FEEDBACK_MODE"] = "decoupled"
+os.environ["MULTI_STEP_HEURISTICS_ENABLED"] = "true"
+os.environ["LLM_SESSION_JUDGE_ENABLED"] = "true"
+
 """
-Benchmark 3000 diverse samples from evo_pca_full.jsonl (Ablation dataset).
+Benchmark 3000 diverse samples from evo_pca_full.jsonl (Nigga dataset).
 
 Sampling strategy:
 - 1200 benign (balanced sources)
@@ -13,7 +24,7 @@ import json, sys, os, re, time, uuid, random
 from collections import defaultdict, Counter
 
 random.seed(42)
-sys.path.insert(0, 'd:/DEMO_GROUP_1')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ─── Load Config ───
 try:
@@ -42,9 +53,14 @@ except ImportError:
     preflight_meta = None
 
 # ─── Load full dataset ───
-print("Loading evo_pca_full.jsonl...")
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+dataset_path = os.path.join(project_root, "ablation", "output", "evo_pca_full.jsonl")
+if not os.path.exists(dataset_path):
+    dataset_path = os.path.join(project_root, "output", "evo_pca_full.jsonl")
+
+print(f"Loading dataset from {dataset_path}...")
 data = []
-with open('d:/DEMO_GROUP_1/eval_dataset/output/evo_pca_full.jsonl', 'r', encoding='utf-8') as f:
+with open(dataset_path, 'r', encoding='utf-8') as f:
     for line in f:
         if line.strip():
             data.append(json.loads(line))
@@ -181,7 +197,10 @@ print("=" * 80)
 from core.pipeline import UnifiedFirewallPipeline
 from tests.run_benchmark import ActionTier
 
-pipeline = UnifiedFirewallPipeline()
+# Synchronized with benchmark_3000.py: offline benchmark executes sequentially in micro-bursts (<1ms),
+# so use_synthetic_iat=True simulates realistic inter-arrival times (~5000ms) to prevent skewing
+# the LSTM model's temporal feature extraction.
+pipeline = UnifiedFirewallPipeline(use_synthetic_iat=True)
 
 tp_single = fp = tn = fn_single = 0
 tp_multi = fn_multi = 0
@@ -400,12 +419,12 @@ results_dict = {
     ]
 }
 df = pd.DataFrame(results_dict)
-csv_path = 'd:/DEMO_GROUP_1/benchmark_5000_eval_results.csv'
+csv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "benchmark_5000_eval_results.csv")
 df.to_csv(csv_path, index=False)
 print(f"\n[OK] Results saved to {csv_path}")
 
 # Save FP/FN details
-report_path = 'd:/DEMO_GROUP_1/fp_fn_report_5000_eval.txt'
+report_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fp_fn_report_5000_eval.txt")
 with open(report_path, "w", encoding='utf-8') as f:
     f.write(f"=== FP/FN Report — 5000 Eval Dataset Benchmark ===\n\n")
     f.write(f"FPR={fpr:.2f}% ABSR_total={absr_total:.2f}% ABSR_single={absr_single:.2f}% ABSR_multi={absr_multi:.2f}%\n\n")

@@ -9,18 +9,29 @@ import re
 # Fix imports since we moved files
 from core.tier0 import LlamaFirewallTier0
 from core.tier05 import SessionAwareTier05
+from models.security.multi_step_heuristics import HeuristicStateTracker
+from models.security.llm_session_judge import LLMSessionJudge
 from models.security.v61_inference_router import V61SecurityRouter
 from models.security.feedback_logger import FeedbackLogger
 from models.security.advanced_heuristics import VotingAggregator, RiskSignal, Canonicalizer, PermissionGate, AdaptiveEscalationManager
 from models.security.boundary_detector import InstructionBoundaryDetector
+from models.security.global_threat_tracker import GlobalThreatTracker
+from models.security.signal_registry import SignalRegistry, EscalationManagerType
 
 _config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'thresholds.json')
 try:
     with open(_config_path) as f:
         _thresholds = json.load(f)
+    # Dual architectural role (single source of truth from thresholds.json):
+    #   (a) v61_action_review_threshold: V61 action model internal ALLOW→REVIEW boundary
+    #   (b) session_judge_band_ceil: scores >= this bypass Session Judge, go to V61 LLM Action Judge
     _action_review_threshold = _thresholds.get('action_risk_model', {}).get('REVIEW', 0.5577)
+    _action_block_threshold = _thresholds.get('action_risk_model', {}).get('BLOCK', 0.6429)
+    _suspicious_band_min = _thresholds.get('multi_step_defense', {}).get('suspicious_band_min', 0.40)
 except Exception:
     _action_review_threshold = 0.5577
+    _action_block_threshold = 0.6429
+    _suspicious_band_min = 0.40
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,6 +45,7 @@ _COMMAND_INDICATORS = re.compile(
     r'|https?://',          # URL — dấu hiệu exfiltration/download
     re.IGNORECASE
 )
+
 
 def _is_quoted_tool_result(action: str) -> bool:
     lines = action.strip().splitlines()
@@ -94,24 +106,22 @@ def _extract_instruction_segments(text: str) -> list[str]:
 
 class UnifiedFirewallPipeline:
     """
-    Orchestrator chung điều phối cả 3 tầng bảo mật:
-    Tier 0 -> Tier 0.5 -> V61 (ML + LLM Judge).
-    Cung cấp các cổng scan ingress và sanitize egress.
+    Orchestrator điều phối các tầng phòng thủ:
+    Tier 0 (Fast Regex) -> Tier 0.5 (Heuristic State-Machine) -> V61 Router -> LLM Session Judge.
     """
     def __init__(self, use_synthetic_iat: bool = False):
         self.use_synthetic_iat = use_synthetic_iat
-        logger.info("Initializing Production Pipeline: Tier 0 -> Tier 0.5 -> V61")
+        logger.info("Initializing Multi-Step Hardened Pipeline: Tier 0 -> Heuristic State-Machine -> V61 -> LLM Session Judge")
         self.tier0 = LlamaFirewallTier0()
         self.tier05_base = SessionAwareTier05(tier0=self.tier0)
-        
-        # Inject the Neural Network LSTM as Tier 0.5 Wrapper (Phase 12)
         try:
             from core.lstm_tier05 import LSTMTier05Wrapper
             self.tier05 = LSTMTier05Wrapper(self.tier05_base, use_synthetic_iat=self.use_synthetic_iat)
         except Exception as e:
             logger.error(f"Failed to load LSTM Tier 0.5 Wrapper: {e}")
             self.tier05 = self.tier05_base
-        # Khởi tạo không tham số để dùng Environment Variables
+        self.state_tracker = HeuristicStateTracker()
+        self.session_judge = LLMSessionJudge()
         self.v61 = V61SecurityRouter()
         self.feedback_logger = FeedbackLogger()
         self.permission_gate = PermissionGate()
@@ -122,14 +132,24 @@ class UnifiedFirewallPipeline:
             warmup_decisions=30
         )
         self.boundary_detector = InstructionBoundaryDetector()
+        self.global_tracker = GlobalThreatTracker()
+        self.signal_registry = SignalRegistry.get_instance()
             
-    def scan(self, action: str, session_id: str, action_type: str = "prompt", actual_label: bool = None) -> dict:
+    def scan(self, action: str, session_id: str, action_type: str = "prompt", actual_label: bool = None, user_id: str = None) -> dict:
         """
         Quét hành động đầu vào (Ingress) qua toàn bộ pipeline.
         Hỗ trợ SHADOW_MODE qua biến môi trường (mặc định False).
         """
         is_shadow_mode = os.environ.get("SHADOW_MODE", "False").lower() == "true"
+        effective_user_id = user_id or session_id
         
+        # Defensive auto-inference of action_type (Fix 2 logic)
+        if action_type in (None, "prompt"):
+            if isinstance(action, dict):
+                action_type = "tool_call"
+            elif isinstance(action, str) and re.match(r'^[a-zA-Z_]\w*\s*\(', action.strip()):
+                action_type = "tool_call"
+
         result = {
             "decision": "ALLOW",
             "layer": None,
@@ -140,11 +160,15 @@ class UnifiedFirewallPipeline:
             "action_type": action_type
         }
         
-        try:
-            from core.tier_lstm import _extract_tool_and_resource
-            tool_name, _ = _extract_tool_and_resource(action, action_type)
-        except Exception:
-            tool_name = None
+        tool_name = None
+        if action_type == "tool_call":
+            # Extract tool name from dictionary or string
+            if isinstance(action, dict):
+                tool_name = action.get("name") or action.get("tool")
+            else:
+                m = re.match(r'^(\w+)\(', action.strip())
+                if m:
+                    tool_name = m.group(1)
             
         skip_rce = False
         if tool_name in READ_ONLY_TOOLS:
@@ -152,25 +176,19 @@ class UnifiedFirewallPipeline:
         elif not tool_name and _is_quoted_tool_result(action):
             skip_rce = True
         
-        # --- Layer 1: Tier 0.5 (Gọi ĐÚNG 1 LẦN) ---
+        # --- Layer 1A: Tier 0.5 Base Rule Scanning ---
         t05_res = self.tier05.scan(action, session_id=session_id, action_type=action_type, skip_rce=skip_rce)
-        if session_id.startswith('sess_multi'):
-            print(f"[DEBUG-TIER0.5] session_id={session_id} is_blocked={getattr(t05_res, 'is_blocked', False)}")
-        
         rule_fired = getattr(t05_res, 'rule_fired', '')
-        if rule_fired == "LSTM_TEMPORAL_MODEL":
-            actual_layer = "Tier0.5-LSTM"
-        else:
-            actual_layer = "Tier0.5" if "cross_step" in rule_fired else "Tier0"
+        actual_layer = "Tier0.5-LSTM" if "LSTM" in rule_fired else ("Tier0.5" if "cross_step" in rule_fired else "Tier0")
         
         decision_val = getattr(t05_res, 'decision', 'ALLOW')
         t05_decision_str = (decision_val.value if hasattr(decision_val, 'value') else str(decision_val)).upper()
-        
-        # --- Phase 1.2: Consequence-based Gate (Phase 4) ---
         is_t05_blocked = getattr(t05_res, 'is_blocked', False)
+
+        # --- Layer 1B: Heuristic State-Machine (Multi-Step Kill-Chain Detection) ---
+        multi_step_res = self.state_tracker.evaluate(action, session_id=session_id, action_type=action_type)
+
         force_review = False
-        
-        # Extract early for provenance and signal checks
         session_ref = self.tier05.get_session_ref(session_id)
         report = self.tier05.get_session_report(session_id)
         active_flags = report.get('active_flags', [])
@@ -179,7 +197,6 @@ class UnifiedFirewallPipeline:
         if action_type == "tool_call" and tool_name:
             from models.security.function_risk_registry import HIGH_RISK_FUNCTIONS
             if tool_name in HIGH_RISK_FUNCTIONS:
-                from models.security.advanced_heuristics import PermissionGate
                 has_taint = PermissionGate.check_taint_overlap(action, session_ref)
                 user_goal = getattr(session_ref, 'user_goal_text', '') if session_ref else ''
                 has_exfil = PermissionGate.has_explicit_exfil_target(action, user_goal)
@@ -188,31 +205,29 @@ class UnifiedFirewallPipeline:
                     is_suspicious_dangerous_tool = True
                     force_review = True
 
-        # Heuristic Gate Optimization: Ngăn Tier0 block nhầm (FPR) trên payloads không phải prompt thuần túy.
-        # Tuy nhiên, nếu là tool nguy hiểm + có dấu hiệu khả nghi (Gap 6), vô hiệu hóa bypass này!
+        # Check if Tier0.5 Base blocked
         if is_t05_blocked and actual_layer == "Tier0" and action_type != "prompt":
             if not is_suspicious_dangerous_tool:
                 is_t05_blocked = False
                 t05_decision_str = "ALLOW"
                 t05_res.confidence = 0.0
-            
+
         if is_t05_blocked:
             result["decision"] = "BLOCK"
             result["layer"] = actual_layer
             result["reason"] = getattr(t05_res, 'reason', '')
+        elif multi_step_res.is_blocked:
+            # Multi-Step Kill-chain directly triggered
+            result["decision"] = "BLOCK"
+            result["layer"] = "MultiStep-Heuristics"
+            result["reason"] = multi_step_res.reason
         else:
-            # --- Layer 2: V61 (ML Model + LLM Judge) ---
-            normalized_action = getattr(t05_res, 'normalized_action', action)
+            # --- Layer 2: V61 Router (ML Model + LLM Action Judge) ---
             tier05_risk_score = getattr(t05_res, 'confidence', 0.0)
             all_rules_fired = getattr(t05_res, 'all_rules_fired', [])
-            
-            # V61 always evaluates (to catch Secrets/Exfiltration), regardless of skip_rce
-            
-            # If it's a read-only tool output or quoted text, the action model (trained on commands)
-            # will flag it as an anomalous command. We evaluate it using the prompt model (text) instead.
             v61_action_type = "prompt" if skip_rce else action_type
             
-            # --- LONG TEXT HEURISTIC ---
+            # Extract instruction segments for long text heuristic
             segments = []
             if len(action) > 500:
                 segments = _extract_instruction_segments(action)
@@ -246,19 +261,37 @@ class UnifiedFirewallPipeline:
                         v61_res["judge_reason"] = "[LONG_TEXT_HEURISTIC] Blocked on extracted instruction: " + seg_res.get("judge_reason", "")
                         break
 
-            result["decision"] = v61_res.get("decision", "ALLOW")
-            result["layer"] = "V61"
-            
-            base_reason = v61_res.get("judge_reason", "")
-            if t05_decision_str == "MONITOR":
-                monitor_reason = getattr(t05_res, 'reason', 'Suspicious activity detected')
-                result["reason"] = f"[{actual_layer} MONITOR: {monitor_reason}] " + base_reason
-            else:
-                result["reason"] = base_reason
-                
-            result["llm_down"] = v61_res.get("llm_down", False)
-            result["ml_score"] = v61_res.get("score", 0.0)
+            ml_score = float(v61_res.get("score", 0.0))
+            result["ml_score"] = ml_score
             result["path"] = v61_res.get("path")
+            result["llm_down"] = v61_res.get("llm_down", False)
+
+            # --- Layer 2B: LLM Session Judge Trigger Routing ---
+            # Triggered if in suspicious score band [0.40, 0.5577) OR if State-Machine flagged Level-1 Warning
+            is_suspicious_band = (_suspicious_band_min <= ml_score < _action_review_threshold)
+            is_state_warning = (multi_step_res.risk_level == "WARNING_LEVEL_1")
+            
+            if (is_suspicious_band or is_state_warning) and v61_res.get("decision") != "BLOCK":
+                session_history = [item[2] for item in getattr(self.state_tracker.sessions.get(session_id), 'action_history', [])]
+                session_decision, session_reason, _ = self.session_judge.judge_session(
+                    current_action=action,
+                    session_history=session_history,
+                    ml_score=ml_score,
+                    state_flags=list(multi_step_res.stage_flags),
+                    session_id=session_id
+                )
+                if session_decision == "BLOCK":
+                    result["decision"] = "BLOCK"
+                    result["layer"] = "LLM-Session-Judge"
+                    result["reason"] = f"[LLM_SESSION_JUDGE] {session_reason}"
+                else:
+                    result["decision"] = "ALLOW"
+                    result["layer"] = "V61"
+                    result["reason"] = v61_res.get("judge_reason", "")
+            else:
+                result["decision"] = v61_res.get("decision", "ALLOW")
+                result["layer"] = "V61"
+                result["reason"] = v61_res.get("judge_reason", "")
 
         # --- Advanced Heuristics (Production Gate) ---
         try:
@@ -266,25 +299,24 @@ class UnifiedFirewallPipeline:
             session = self.tier05.get_session_ref(session_id)
             
             signals = []
-            
             action_str = json.dumps(action, ensure_ascii=False) if isinstance(action, dict) else str(action)
             canonicalized_action_str = Canonicalizer.canonicalize(action_str)
-            # Detect using PermissionGate (Provenance Tagging & High Risk Combos)
+            
             gate_signals = self.permission_gate.detect(
                 canonicalized_action_str, 
                 session=session, 
                 enable_provenance=enable_provenance,
                 skip_rce=skip_rce,
-                tool_name=tool_name
+                tool_name=tool_name,
+                is_suspicious_dangerous_tool=is_suspicious_dangerous_tool
             )
             signals.extend(gate_signals)
             
-            # --- Structural Invariant Detection (Phase 1) ---
             is_violated, boundary_conf, violations = self.boundary_detector.detect(canonicalized_action_str)
             if is_violated:
                 signals.append(RiskSignal(
                     name='instruction_boundary_violation',
-                    severity=int(boundary_conf * 85),  # Feeds into voting
+                    severity=int(boundary_conf * 85),
                     confidence=boundary_conf,
                     is_critical=boundary_conf > 0.85,
                     source='boundary_detector',
@@ -292,15 +324,21 @@ class UnifiedFirewallPipeline:
                               for v in violations[:3]]
                 ))
             
-            if getattr(t05_res, 'confidence', 0) > 0.1:
+            # Multi-step state signal
+            if multi_step_res.risk_level == "WARNING_LEVEL_1":
                 signals.append(RiskSignal(
-                    name=getattr(t05_res, 'rule_fired', 'tier05_flag') or 'tier05_flag',
-                    severity=int(getattr(t05_res, 'confidence', 0) * 100),
-                    confidence=0.8,
-                    is_critical=False,
-                    source='tier05'
+                    name='multistep_stage_warning',
+                    severity=60,
+                    confidence=0.75,
+                    source='multi_step_heuristics'
                 ))
-                
+            
+            # Layer 3: GlobalThreatTracker (Cross-Session APT Correlation)
+            self.global_tracker.register_stages_from_signals(effective_user_id, session_id, signals)
+            cross_signal = self.global_tracker.check_cross_session_correlation(effective_user_id)
+            if cross_signal:
+                signals.append(cross_signal)
+
             if result.get("ml_score", 0) > _action_review_threshold:
                 signals.append(RiskSignal(
                     name='v61_ml_score',
@@ -319,9 +357,10 @@ class UnifiedFirewallPipeline:
                     source='v61_llm'
                 ))
                 
-            heuristics_tier, heuristics_score = VotingAggregator.vote(signals)
+            heuristics_tier, heuristics_score, contributing_signals = VotingAggregator.vote(signals)
             result["heuristics_decision"] = heuristics_tier.value
             result["heuristics_score"] = float(heuristics_score)
+            result["contributing_signals"] = contributing_signals
 
             # Hard gate decision override
             is_escalation = (result["decision"] != "BLOCK")
@@ -335,25 +374,28 @@ class UnifiedFirewallPipeline:
                 else:
                     result["heuristics_decision"] = heuristics_tier.value
                     result["heuristics_downgraded"] = True
-                    # Do NOT override result["decision"], effectively downgrading to REVIEW
 
         except Exception as e:
             result["heuristics_error"] = str(e)
             logger.error(f"Heuristics Error: {e}")
             
-        # --- Áp dụng Shadow Mode logic nếu được bật ---
+        # --- Shadow Mode Logic ---
         if result["decision"] == "BLOCK" and is_shadow_mode:
             result["was_shadow_blocked"] = True
             result["shadow_blocked_layer"] = result["layer"]
             result["decision"] = "ALLOW"
             result["reason"] = f"[SHADOW BLOCK] Action would have been blocked by {result['layer']}. " + result["reason"]
             
-        # --- Ghi nhận log ---
+        # --- Telemetry & FPR Budget Recording ---
         is_real_block = result["decision"] == "BLOCK" or result.get("was_shadow_blocked")
+        decision_layer = str(result.get("layer") or "unknown")
         
-        # --- Cập nhật FPR Budget Manager (Phase 1.1) ---
-        if result.get("layer") != "Tier0":
-            self.fpr_manager.record_decision(is_escalated=bool(is_real_block))
+        # Enforce Signal Registry Escalation Policy:
+        # ONLY authorized sources (V61 ML) are permitted to feed V61 adaptive escalation.
+        # Other layers (Heuristics, MultiStep-Heuristics, Session-Judge) are STRICTLY BLOCKED
+        # from contaminating the V61 adaptive threshold feedback loop (anti-E7 protection).
+        if self.signal_registry.can_feed_escalation(decision_layer, EscalationManagerType.V61_ADAPTIVE):
+            self.fpr_manager.record_decision(is_escalated=bool(is_real_block), layer=decision_layer)
             
         if result.get("llm_down"):
             result["event_type"] = "LLM_DOWN_INCIDENT"
@@ -366,14 +408,10 @@ class UnifiedFirewallPipeline:
             result["label_source"] = "self_reported_allow"
             self.feedback_logger.log(result, action)
             
-        # Ensure action_type and reason are always accurately populated in the result
         result["action_type"] = action_type
-        
         return result
 
     def _get_provenance_enabled(self) -> bool:
-        import json
-        import os
         config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'thresholds.json')
         if os.path.exists(config_path):
             try:
@@ -385,9 +423,6 @@ class UnifiedFirewallPipeline:
         return False
 
     def sanitize(self, raw_data: str, tool_name: str = "unknown", session_id: str = "default") -> dict:
-        """
-        Làm sạch dữ liệu đầu ra từ công cụ (Egress Sanitize).
-        """
         enable_provenance = self._get_provenance_enabled()
         session = self.tier05.get_session_ref(session_id)
         return self.v61.sanitize_data(
@@ -399,9 +434,6 @@ class UnifiedFirewallPipeline:
         )
 
     def sanitize_batch(self, raw_data_list: list[str], tool_name: str = "unknown", session_id: str = "default") -> list[dict]:
-        """
-        Làm sạch dữ liệu đầu ra từ công cụ theo batch (Egress Sanitize).
-        """
         enable_provenance = self._get_provenance_enabled()
         session = self.tier05.get_session_ref(session_id)
         return self.v61.sanitize_data_batch(

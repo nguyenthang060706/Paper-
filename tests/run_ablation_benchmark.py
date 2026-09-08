@@ -1,16 +1,8 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import os
 import sys
 import io
-
-try:
-    from core.config_loader import load_settings
-    load_settings(override_existing=True)
-except Exception:
-    pass
-
 if sys.stdout and getattr(sys.stdout, 'encoding', '') != 'utf-8':
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -29,6 +21,15 @@ if xgboost.__version__ != '2.0.3':
 
 import hashlib
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from core.config_loader import load_settings
+    load_settings(override_existing=True)
+except Exception as e:
+    print(f"[WARN] Failed to auto-load settings: {e}")
 
 # SECURITY: do NOT hardcode tokens in the notebook.
 # Set HF_TOKEN in the environment before running, or use `huggingface-cli login`.
@@ -4905,10 +4906,18 @@ class UnifiedLlamaFirewall_Agent:
     of running this LSTM (trained on richer multi-agent session telemetry)
     against this benchmark's linear, replayed AgentDojo dataset.
     """
-    NAME = 'EVO-PCA Dual Shield (Tier0/0.5 + V61 + Tier0.5-LSTM)'
+    NAME = 'EVO-PCA Multi-Step Hardened Pipeline (Tier0 + State-Machine + V61 + Session Judge)'
 
     def __init__(self):
         from core.pipeline import UnifiedFirewallPipeline
+        from models.security.v61_inference_router import V61SecurityRouter
+        from models.security.advanced_heuristics import SemanticCamouflageDetector
+        from models.security.global_threat_tracker import GlobalThreatTracker
+        
+        # Reset singletons for Ablation Study isolation
+        V61SecurityRouter.reset_instance()
+        GlobalThreatTracker.reset_instance()
+        
         self.firewall = UnifiedFirewallPipeline(use_synthetic_iat=True)
 
     def evaluate(self, record):
@@ -4916,15 +4925,20 @@ class UnifiedLlamaFirewall_Agent:
         t0 = time.perf_counter()
         action = record['action']
         session_id = record.get('session_id', 'default')
-        action_type = record.get('action_type', 'prompt')
+        raw_at = record.get('action_type')
+        if not raw_at or raw_at == 'prompt':
+            if re.match(r'^[a-zA-Z_]\w*\s*\(', action.strip()):
+                action_type = 'tool_call'
+            else:
+                action_type = raw_at or 'prompt'
+        else:
+            action_type = raw_at
         actual_label = record.get('label') != 'benign'
         res = self.firewall.scan(action=action, session_id=session_id, action_type=action_type, actual_label=actual_label)
 
         blocked = res['decision'] in ('BLOCK', 'QUARANTINE')
         tier0_block = 'BLOCK' if res.get('layer') == 'Tier0' and blocked else 'ALLOW'
         firewall_layer = res.get('layer')
-
-        lstm_res = None
 
         out = {
             'decision': ActionTier.DENY if blocked else ActionTier.ALLOW,
@@ -4934,9 +4948,6 @@ class UnifiedLlamaFirewall_Agent:
             'reason': res.get('reason', 'Unknown'),
             'action_type': res.get('action_type', action_type)
         }
-        if lstm_res is not None:
-            out['lstm_probability'] = lstm_res.get('probability', 0.0)
-            out['lstm_available'] = lstm_res.get('available', False)
         return out
 
 from tqdm.auto import tqdm
@@ -4984,7 +4995,8 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
         tp_single = fp = tn = fn_single = 0
         tp_multi  = fn_multi = 0
         tier0_blocks = 0
-        lstm_blocks = 0
+        multistep_heuristics_blocks = 0
+        session_judge_blocks = 0
         v61_blocks = 0
         heuristics_blocks = 0
         
@@ -5063,19 +5075,22 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
             sid      = record.get('session_id', 'default')
             label    = record['label']
             atype    = record.get('attack_type', 'benign')
-            step_num = record.get('step_num', 1)
+            step_num = record.get('step_num', record.get('step_index', 0) + 1)
 
             decision_str = str(out['decision']).split('.')[-1]
-            blocked = decision_str in ('DENY', 'QUARANTINE')
-            latencies.append(out['latency_ms'])
+            blocked = decision_str in ('DENY', 'QUARANTINE', 'BLOCK')
+            latencies.append(out.get('latency_ms', 0.0))
 
-            if out.get('tier0') == 'BLOCK':
+            layer_name = out.get('layer', '')
+            if out.get('tier0') == 'BLOCK' or layer_name == 'Tier0':
                 tier0_blocks += 1
-            if out.get('layer') == 'Tier0.5-LSTM' and blocked:
-                lstm_blocks += 1
-            if out.get('layer') == 'V61' and blocked:
+            if layer_name in ('MultiStep-Heuristics', 'Tier0.5-LSTM') and blocked:
+                multistep_heuristics_blocks += 1
+            if layer_name == 'LLM-Session-Judge' and blocked:
+                session_judge_blocks += 1
+            if layer_name == 'V61' and blocked:
                 v61_blocks += 1
-            if out.get('layer') == 'Heuristics' and blocked:
+            if layer_name == 'Heuristics' and blocked:
                 heuristics_blocks += 1
 
             # Bug 5 fix: determine warm-up by session count
@@ -5152,7 +5167,8 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
             'ABSR Multi-step Session (step1-only)%' : round(absr_multi_session_early, 2),
             'Avg Latency (ms) lower-better'         : round(avg_lat, 2),
             'Tier 0 Blocks'                         : tier0_blocks,
-            'Tier 0.5-LSTM Blocks'                  : lstm_blocks,
+            'Multi-Step Heuristics Blocks'          : multistep_heuristics_blocks,
+            'LLM Session Judge Blocks'              : session_judge_blocks,
             'V61 Blocks'                            : v61_blocks,
             'Heuristics Blocks'                     : heuristics_blocks,
         }
@@ -5166,7 +5182,8 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
             f'session_step1={absr_multi_session_early:.1f}%  '
             f'lat={avg_lat:.1f}ms'
             + (f'  tier0={tier0_blocks}' if tier0_blocks else '')
-            + (f'  lstm={lstm_blocks}' if lstm_blocks else '')
+            + (f'  multi_step={multistep_heuristics_blocks}' if multistep_heuristics_blocks else '')
+            + (f'  session_judge={session_judge_blocks}' if session_judge_blocks else '')
             + (f'  v61={v61_blocks}' if v61_blocks else '')
             + (f'  heuristics={heuristics_blocks}' if heuristics_blocks else '')
         )
@@ -5212,11 +5229,15 @@ def run_comparison_improved(dataset, target_escalation_rate=None):
     return df
 
 
-def _get_ablation_dataset_path():
+def _get_AblationResults_dataset_path():
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     default_path = os.path.join(project_root, 'ablation', 'output', 'evo_pca_full.jsonl')
     dataset_path = os.environ.get('EVO_PCA_DATASET_PATH', default_path)
     if not os.path.exists(dataset_path):
+        # Fallback to project root output/ if ablation/output/ not found
+        fallback_path = os.path.join(project_root, 'output', 'evo_pca_full.jsonl')
+        if os.path.exists(fallback_path):
+            return fallback_path
         raise FileNotFoundError(
             f"Dataset file not found: {dataset_path}. "
             f"Set EVO_PCA_DATASET_PATH or place dataset under {default_path}"
@@ -5224,21 +5245,33 @@ def _get_ablation_dataset_path():
     return dataset_path
 
 
+def infer_action_type(action):
+    """Infer action_type from action string if missing."""
+    if isinstance(action, dict):
+        return 'tool_call'
+    if isinstance(action, str) and re.match(r'^[a-zA-Z_]\w*\s*\(', action.strip()):
+        return 'tool_call'
+    return 'prompt'
+
+
 def main():
     import json, random
     dataset = []
-    dataset_path = _get_ablation_dataset_path()
+    dataset_path = _get_AblationResults_dataset_path()
     with open(dataset_path, 'r', encoding='utf-8') as f:
         for line in f:
-            dataset.append(json.loads(line))
-    print(f"Loaded {len(dataset)} records from Ablation dataset at {dataset_path}.")
+            rec = json.loads(line)
+            if 'action_type' not in rec or not rec['action_type']:
+                rec['action_type'] = infer_action_type(rec.get('action', ''))
+            dataset.append(rec)
+    print(f"Loaded {len(dataset)} records from AblationResults dataset at {dataset_path}.")
     all_sids = set(r.get("session_id") for r in dataset)
     malicious_sids = set(r.get("session_id") for r in dataset if r.get("attack_type") in ("malicious_single", "malicious_multistep"))
     session_rate = len(malicious_sids) / len(all_sids) if all_sids else 0.0
-    print("\n>> Running comparison on Ablation Dataset (Escalation Rate: " + str(session_rate) + ")...\n")
+    print("\n>> Running comparison on AblationResults Dataset (Escalation Rate: " + str(session_rate) + ")...\n")
     summary_df = run_comparison_improved(dataset, target_escalation_rate=0.10)
     print("=" * 80)
-    print("  BENCHMARK RESULTS ON ABLATION DATASET")
+    print("  BENCHMARK RESULTS ON AblationResults DATASET")
     print("=" * 80)
     print(summary_df.T.to_string())
     print("=" * 80)
@@ -5264,7 +5297,7 @@ def run_egress_benchmark():
         egress_path = os.environ.get(
             'EVO_PCA_EGRESS_DATASET_PATH',
             os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                         'ablation', 'output', 'evo_pca_11k_balanced.jsonl')
+                         'output', 'evo_pca_11k_balanced.jsonl')
         )
         if not os.path.exists(egress_path):
             raise FileNotFoundError(f"Egress dataset not found at {egress_path}")

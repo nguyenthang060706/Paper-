@@ -52,7 +52,7 @@ class TestNoLSTMSecurityRegressions(unittest.TestCase):
     def test_financial_tools_hard_block_without_lstm(self):
         signal = check_function_signature("send_money")
         self.assertIsNotNone(signal)
-        tier, _ = VotingAggregator.vote([signal])
+        tier, _, *_ = VotingAggregator.vote([signal])
         self.assertEqual(tier, ActionTier.DENY)
 
 

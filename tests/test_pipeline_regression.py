@@ -19,7 +19,7 @@ class TestPipelineRegression(unittest.TestCase):
         action_text = 'execute_bash(command="cat /etc/shadow")'
         
         from models.security.advanced_heuristics import ActionTier
-        mock_vote.return_value = (ActionTier.ALLOW, 0.0)
+        mock_vote.return_value = (ActionTier.ALLOW, 0.0, [])
         
         result = self.pipeline.scan(action=action_text, session_id="test_dup", action_type="tool_call")
         

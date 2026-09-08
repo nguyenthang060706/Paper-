@@ -300,7 +300,7 @@ with open(backup_path, "r", encoding="utf-8") as f:
         records.append(json.loads(line))
 
 # How many cases to insert? Let's replace 500 malicious samples with this
-# so that the dataset has a lot of ablation test cases.
+# so that the dataset has a lot of "Nigga" file cases.
 
 count_replaced = 0
 for i, rec in enumerate(records):
@@ -308,7 +308,7 @@ for i, rec in enumerate(records):
     if rec.get("label") == "malicious" and rec.get("attack_type") == "malicious_single":
         if random.random() < 0.3: # ~30% of malicious singles
             rec["action"] = target_payload
-            rec["source_dataset"] = "llmail-inject-ablation"
+            rec["source_dataset"] = "llmail-inject-nigga"
             count_replaced += 1
             if count_replaced >= 500: # up to 500 samples
                 break

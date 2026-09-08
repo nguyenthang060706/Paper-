@@ -69,7 +69,7 @@ def run_benchmark(num_requests: int = 1000):
     ]
     for i in range(num_requests):
         t0 = time.perf_counter()
-        tier, score = VotingAggregator.vote(dummy_signals)
+        tier, score, *_ = VotingAggregator.vote(dummy_signals)
         t1 = time.perf_counter()
         latencies_vote.append((t1 - t0) * 1000.0)
 

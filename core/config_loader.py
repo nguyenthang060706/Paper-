@@ -28,8 +28,11 @@ _KEY_TO_ENV = {
     "ollama_timeout": "OLLAMA_TIMEOUT",
     "firewall_mode": "FIREWALL_MODE",
     "ollama_base_url": "OLLAMA_HOST",
-    "semantic_delta_threshold": "SEMANTIC_DELTA_THRESHOLD",
-    "sequence_risk_gain": "SEQUENCE_RISK_GAIN",
+    "multi_step_heuristics_enabled": "MULTI_STEP_HEURISTICS_ENABLED",
+    "llm_session_judge_enabled": "LLM_SESSION_JUDGE_ENABLED",
+    "llm_session_judge_timeout": "LLM_SESSION_JUDGE_TIMEOUT",
+    "llm_session_history_window": "LLM_SESSION_HISTORY_WINDOW",
+    "guard_high_risk_threshold": "GUARD_HIGH_RISK_THRESHOLD",
 }
 
 _DEFAULT_SETTINGS_PATH = os.path.join(
@@ -39,7 +42,7 @@ _DEFAULT_SETTINGS_PATH = os.path.join(
 
 def _parse_flat_yaml(text: str) -> dict:
     """Parse key: value phẳng, bỏ qua comment (#) và dòng rỗng.
-    Tự động strip quotes bao quanh string value ("gemma3:4b" -> gemma3:4b).
+    Tự động strip quotes bao quanh string value ("gemma4:12b" -> gemma4:12b).
     KHÔNG hỗ trợ nesting/list — nếu thấy indent hoặc '-' đầu dòng, raise rõ ràng
     thay vì âm thầm parse sai."""
     result = {}

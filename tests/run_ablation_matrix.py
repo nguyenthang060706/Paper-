@@ -35,14 +35,14 @@ def run_matrix():
         print(f"  Running: {' '.join(cmd)}")
         
         try:
-            result = subprocess.run(cmd, env=env, cwd="d:/DEMO_GROUP_1", capture_output=True, text=True, check=True)
+            result = subprocess.run(cmd, env=env, cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))), capture_output=True, text=True, check=True)
             print(f"  Run successful!")
             
             # Rename output
-            if os.path.exists("d:/DEMO_GROUP_1/agentdojo_benchmark_summary.csv"):
+            if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agentdojo_benchmark_summary.csv")):
                 os.rename(
-                    "d:/DEMO_GROUP_1/agentdojo_benchmark_summary.csv", 
-                    f"d:/DEMO_GROUP_1/{csv_out}"
+                    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agentdojo_benchmark_summary.csv"), 
+                    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), f"{csv_out}")
                 )
                 print(f"  Saved results to {csv_out}")
             else:

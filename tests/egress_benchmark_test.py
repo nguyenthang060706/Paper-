@@ -12,7 +12,7 @@ def run_egress_benchmark():
     pipeline = UnifiedFirewallPipeline()
     records = []
     try:
-        with open("D:/DEMO_GROUP_1/Benchmark_Datasets/output/evo_pca_11k_balanced.jsonl", "r", encoding="utf-8") as f:
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "evo_pca_11k_balanced.jsonl"), "r", encoding="utf-8") as f:
             for line in f:
                 records.append(json.loads(line))
     except Exception as e:

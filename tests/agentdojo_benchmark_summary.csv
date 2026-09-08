@@ -1,0 +1,14 @@
+,EVO-PCA Dual Shield (Tier0/0.5 + V61 + Tier0.5-LSTM)
+FPR (%) lower-better,49.21
+FPR Steady-State (%) lower-better,47.5
+ABSR Total (%) higher-better,63.41
+ABSR Single-step (%),81.08
+ABSR Multi-step Action (%),55.81
+ABSR Multi-step Session (any-step)%,100.0
+ABSR Multi-step Session (step1-only)%,74.24
+Avg Latency (ms) lower-better,2515.43
+Tier 0 Blocks,120.0
+Tier 0.5-LSTM Blocks,0.0
+V61 Blocks,281.0
+Heuristics Blocks,52.0
+dataset_source,AgentDojo_v1

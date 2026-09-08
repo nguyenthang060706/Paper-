@@ -1,6 +1,7 @@
+import os
 import sys
 import json
-sys.path.insert(0, 'd:/DEMO_GROUP_1')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.pipeline import UnifiedFirewallPipeline
 
 p = UnifiedFirewallPipeline()

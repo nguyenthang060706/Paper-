@@ -314,13 +314,6 @@ class SessionAwareTier05:
         for flag in expired_flags:
             del session.flags[flag]
             
-        # Reset combo trigger counts if any of their required flags have expired
-        if expired_flags:
-            for combo_flags, _, description, _ in _DANGEROUS_COMBOS:
-                if description in session.combo_trigger_counts:
-                    if any(f in expired_flags for f in combo_flags):
-                        del session.combo_trigger_counts[description]
-            
         # Cleanup tainted_values
         alive_taints = []
         for t in session.tainted_values:
@@ -374,14 +367,14 @@ class SessionAwareTier05:
             # Phase 1: Tier 0 scan (if available)
             tier0_result = None
             if self._tier0 is not None:
-                # [Phase 1.2] Cô lập biến số: Tier 0 chỉ quét prompt (NLP), bỏ qua tool_call (JSON/API)
+                # Tier 0 áp dụng quét regex 32 pattern cho cả prompt (NLP), tool_output và tool_call (chuỗi định dạng tool_name(args...))
                 if action_type in ("prompt", "tool_output", "tool_call"):
                     tier0_result = self._tier0.scan(action, skip_rce=skip_rce)
                     if tier0_result and getattr(tier0_result, 'is_blocked', False):
                         session.block_count += 1
                         return tier0_result
                 else:
-                    # Dummy ALLOW cho tool_call để qua cửa Tier 0, nhường cho Tier 0.5 & V61
+                    # Fallback ALLOW cho các action_type khác không nằm trong nhóm quét trực tiếp
                     tier0_result = ScanResult(
                         decision=ScanDecision.ALLOW,
                         is_blocked=False,

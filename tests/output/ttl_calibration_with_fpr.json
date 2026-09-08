@@ -1,0 +1,95 @@
+{
+  "results": [
+    {
+      "max_benign_steps": 3,
+      "absr": 7.1,
+      "attack_blocked": 1,
+      "attack_total": 14,
+      "fpr": 0.0,
+      "benign_fp": 0,
+      "benign_total": 72
+    },
+    {
+      "max_benign_steps": 5,
+      "absr": 21.4,
+      "attack_blocked": 3,
+      "attack_total": 14,
+      "fpr": 0.0,
+      "benign_fp": 0,
+      "benign_total": 72
+    },
+    {
+      "max_benign_steps": 8,
+      "absr": 42.9,
+      "attack_blocked": 6,
+      "attack_total": 14,
+      "fpr": 0.0,
+      "benign_fp": 0,
+      "benign_total": 72
+    },
+    {
+      "max_benign_steps": 10,
+      "absr": 50.0,
+      "attack_blocked": 7,
+      "attack_total": 14,
+      "fpr": 0.0,
+      "benign_fp": 0,
+      "benign_total": 72
+    },
+    {
+      "max_benign_steps": 15,
+      "absr": 57.1,
+      "attack_blocked": 8,
+      "attack_total": 14,
+      "fpr": 0.0,
+      "benign_fp": 0,
+      "benign_total": 72
+    },
+    {
+      "max_benign_steps": 20,
+      "absr": 64.3,
+      "attack_blocked": 9,
+      "attack_total": 14,
+      "fpr": 0.0,
+      "benign_fp": 0,
+      "benign_total": 72
+    },
+    {
+      "max_benign_steps": 25,
+      "absr": 64.3,
+      "attack_blocked": 9,
+      "attack_total": 14,
+      "fpr": 0.0,
+      "benign_fp": 0,
+      "benign_total": 72
+    },
+    {
+      "max_benign_steps": 30,
+      "absr": 71.4,
+      "attack_blocked": 10,
+      "attack_total": 14,
+      "fpr": 0.0,
+      "benign_fp": 0,
+      "benign_total": 72
+    },
+    {
+      "max_benign_steps": 40,
+      "absr": 78.6,
+      "attack_blocked": 11,
+      "attack_total": 14,
+      "fpr": 0.0,
+      "benign_fp": 0,
+      "benign_total": 72
+    },
+    {
+      "max_benign_steps": 50,
+      "absr": 78.6,
+      "attack_blocked": 11,
+      "attack_total": 14,
+      "fpr": 0.0,
+      "benign_fp": 0,
+      "benign_total": 72
+    }
+  ],
+  "recommended_ttl": 40
+}

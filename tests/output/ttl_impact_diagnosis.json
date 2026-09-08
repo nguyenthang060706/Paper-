@@ -1,0 +1,1053 @@
+{
+  "ttl_values_tested": [
+    5,
+    10,
+    15,
+    20,
+    30,
+    50
+  ],
+  "results_per_ttl": {
+    "5": {
+      "max_benign_steps": 5,
+      "sessions_blocked": 5,
+      "sessions_warning": 9,
+      "sessions_clean": 0,
+      "total_sessions": 14,
+      "per_session": [
+        {
+          "scenario": "Credential access → Exfiltration (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (dense benign)",
+          "benign_between": 7,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 9,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (very dense)",
+          "benign_between": 15,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 17,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (sparse)",
+          "benign_between": 2,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (dense)",
+          "benign_between": 6,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (very dense)",
+          "benign_between": 20,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 22,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (dense)",
+          "benign_between": 8,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "PRIVILEGE_ESCALATION"
+          ],
+          "total_actions": 10,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (very dense)",
+          "benign_between": 25,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "PRIVILEGE_ESCALATION"
+          ],
+          "total_actions": 27,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 7,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (dense)",
+          "benign_between": 6,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 15,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (very dense)",
+          "benign_between": 15,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 33,
+          "benign_counter": 0
+        }
+      ]
+    },
+    "10": {
+      "max_benign_steps": 10,
+      "sessions_blocked": 9,
+      "sessions_warning": 5,
+      "sessions_clean": 0,
+      "total_sessions": 14,
+      "per_session": [
+        {
+          "scenario": "Credential access → Exfiltration (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (dense benign)",
+          "benign_between": 7,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 9,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (very dense)",
+          "benign_between": 15,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 17,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (sparse)",
+          "benign_between": 2,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (dense)",
+          "benign_between": 6,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (very dense)",
+          "benign_between": 20,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 22,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (dense)",
+          "benign_between": 8,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 10,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (very dense)",
+          "benign_between": 25,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "PRIVILEGE_ESCALATION"
+          ],
+          "total_actions": 27,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 7,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 15,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (very dense)",
+          "benign_between": 15,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 33,
+          "benign_counter": 0
+        }
+      ]
+    },
+    "15": {
+      "max_benign_steps": 15,
+      "sessions_blocked": 10,
+      "sessions_warning": 4,
+      "sessions_clean": 0,
+      "total_sessions": 14,
+      "per_session": [
+        {
+          "scenario": "Credential access → Exfiltration (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (dense benign)",
+          "benign_between": 7,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 9,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (very dense)",
+          "benign_between": 15,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 17,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (sparse)",
+          "benign_between": 2,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (dense)",
+          "benign_between": 6,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (very dense)",
+          "benign_between": 20,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 22,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (dense)",
+          "benign_between": 8,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 10,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (very dense)",
+          "benign_between": 25,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 27,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 7,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 15,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (very dense)",
+          "benign_between": 15,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 33,
+          "benign_counter": 0
+        }
+      ]
+    },
+    "20": {
+      "max_benign_steps": 20,
+      "sessions_blocked": 11,
+      "sessions_warning": 3,
+      "sessions_clean": 0,
+      "total_sessions": 14,
+      "per_session": [
+        {
+          "scenario": "Credential access → Exfiltration (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (dense benign)",
+          "benign_between": 7,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 9,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (very dense)",
+          "benign_between": 15,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 17,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (sparse)",
+          "benign_between": 2,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (dense)",
+          "benign_between": 6,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (very dense)",
+          "benign_between": 20,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 22,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (dense)",
+          "benign_between": 8,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 10,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (very dense)",
+          "benign_between": 25,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 27,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 7,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 15,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (very dense)",
+          "benign_between": 15,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 33,
+          "benign_counter": 0
+        }
+      ]
+    },
+    "30": {
+      "max_benign_steps": 30,
+      "sessions_blocked": 11,
+      "sessions_warning": 3,
+      "sessions_clean": 0,
+      "total_sessions": 14,
+      "per_session": [
+        {
+          "scenario": "Credential access → Exfiltration (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (dense benign)",
+          "benign_between": 7,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 9,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (very dense)",
+          "benign_between": 15,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 17,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (sparse)",
+          "benign_between": 2,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (dense)",
+          "benign_between": 6,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (very dense)",
+          "benign_between": 20,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 22,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (dense)",
+          "benign_between": 8,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 10,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (very dense)",
+          "benign_between": 25,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 27,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 7,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 15,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (very dense)",
+          "benign_between": 15,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 33,
+          "benign_counter": 0
+        }
+      ]
+    },
+    "50": {
+      "max_benign_steps": 50,
+      "sessions_blocked": 11,
+      "sessions_warning": 3,
+      "sessions_clean": 0,
+      "total_sessions": 14,
+      "per_session": [
+        {
+          "scenario": "Credential access → Exfiltration (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (dense benign)",
+          "benign_between": 7,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 9,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Credential access → Exfiltration (very dense)",
+          "benign_between": 15,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 17,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (sparse)",
+          "benign_between": 2,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (dense)",
+          "benign_between": 6,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Recon → Exfiltration (very dense)",
+          "benign_between": 20,
+          "any_blocked": false,
+          "any_warning": true,
+          "final_flags": [
+            "DATA_EXFILTRATION"
+          ],
+          "total_actions": 22,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 4,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Evasion → Execution (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "DEFENSE_EVASION",
+            "KILLCHAIN_EVASION_EXEC"
+          ],
+          "total_actions": 8,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (sparse)",
+          "benign_between": 3,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 5,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (dense)",
+          "benign_between": 8,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 10,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "Auth → PrivEsc (very dense)",
+          "benign_between": 25,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_AUTH_PRIVESC"
+          ],
+          "total_actions": 27,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (sparse)",
+          "benign_between": 2,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 7,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (dense)",
+          "benign_between": 6,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 15,
+          "benign_counter": 0
+        },
+        {
+          "scenario": "3-stage: Auth → Recon → Exfil (very dense)",
+          "benign_between": 15,
+          "any_blocked": true,
+          "any_warning": true,
+          "final_flags": [
+            "AUTH_CRED_ACCESS",
+            "KILLCHAIN_RECON_EXFIL"
+          ],
+          "total_actions": 33,
+          "benign_counter": 0
+        }
+      ]
+    }
+  },
+  "absr_at_ttl5": 35.7,
+  "absr_at_ttl30": 78.6,
+  "delta_absr": 42.9,
+  "h2_verdict": "CONFIRMED"
+}
