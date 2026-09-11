@@ -1,4 +1,5 @@
 import os
+import re
 import joblib
 import time
 import requests
@@ -24,25 +25,11 @@ SEC_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.dirname(SEC_DIR)
 ARTIFACTS_DIR = os.path.join(MODELS_DIR, "artifacts")
 
-import re
-NORMALIZATION_RULES = [
-    (re.compile(r'\b\d{1,3}(?:\.\d{1,3}){3}(?::\d{1,5})?\b'), '<IP>'),
-    (re.compile(r'\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b'), '<IBAN>'),
-    (re.compile(r'\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b'), '<UUID>'),
-    (re.compile(r'\b[0-9a-fA-F]{32,64}\b'), '<HASH>'),
-    (re.compile(r'(/etc/(shadow|passwd|gshadow)|~/\.ssh/id_\w+|~/\.aws/credentials)'), '<SENSITIVE_PATH>'),
-]
-
-def normalize(text: str) -> str:
-    for pattern, token in NORMALIZATION_RULES:
-        text = pattern.sub(token, text)
-    return text
-
-
 # Import ContextSanitizer từ v61_context_sanitizer.py (nằm cùng thư mục)
 from .v61_context_sanitizer import ContextSanitizer
 from .shared_utils import ensemble_predict_proba, SCALE_V61, ScoreV61
-from .advanced_heuristics import SemanticCamouflageDetector
+from .advanced_heuristics import SemanticCamouflageDetector, PermissionGate
+from .function_risk_registry import check_function_signature, HIGH_RISK_FUNCTIONS
 
 class MLRiskModel:
     def __init__(self, model_path: str, thresholds_path: str = None, **kwargs):
@@ -263,7 +250,8 @@ class V61SecurityRouter:
     def check_action(self, user_input: str, tier05_decision: str = "ALLOW", 
                      tier05_risk_score: float = 0.0, tier05_rules: list = None,
                      action_type: str = "prompt", session_flags: list = None,
-                     adaptive_threshold: float = None, force_review: bool = False) -> dict:
+                     adaptive_threshold: float = None, force_review: bool = False,
+                     tool_name: str = "", user_goal_text: str = "") -> dict:
         """
         Kiểm tra đầu vào của User.
         Luồng: Fast ML -> Nếu REVIEW -> Slow LLM Judge.
@@ -315,13 +303,32 @@ class V61SecurityRouter:
             ml_result["decision"] = "REVIEW"
             ml_result["reason"] = "SEMANTIC_ESCALATED"
 
-        # Dynamic Fast-to-Slow Escalation for subtle prompt injections (Phase 1 Fix)
-        if action_type == "prompt" and ml_result["decision"] == "ALLOW":
-            has_code_or_script = bool(re.search(r'[`{}();\[\]<>]|(?:\b(?:def|function|import|class|return|var|let|const|print|echo|curl|wget)\b)', user_input))
-            has_imperative_intent = bool(re.search(r'(?i)\b(?:send|forward|transfer|email|upload|dispatch|execute|run|reveal|leak|bypass)\b', user_input))
-            if (has_code_or_script or has_imperative_intent) and ml_result["score"] >= self.structure_escalation_floor:
-                ml_result["decision"] = "REVIEW"
-                ml_result["reason"] = "STRUCTURE_ESCALATED"
+        # Dynamic Fast-to-Slow Escalation
+        if ml_result["decision"] == "ALLOW":
+            if action_type == "prompt":
+                has_code_or_script = bool(re.search(r'[`{}();\[\]<>]|(?:\b(?:def|function|import|class|return|var|let|const|print|echo|curl|wget)\b)', user_input))
+                has_imperative_intent = bool(re.search(r'(?i)\b(?:send|forward|transfer|email|upload|dispatch|execute|run|reveal|leak|bypass)\b', user_input))
+                if (has_code_or_script or has_imperative_intent) and ml_result["score"] >= self.structure_escalation_floor:
+                    ml_result["decision"] = "REVIEW"
+                    ml_result["reason"] = "STRUCTURE_ESCALATED"
+            elif action_type == "tool_call" and tool_name:
+                sig = check_function_signature(tool_name)
+                if sig and sig.severity >= 60:
+                    func_meta = HIGH_RISK_FUNCTIONS.get(tool_name, {})
+                    reason_tag = func_meta.get("reason", "")
+                    is_destructive = any(k in reason_tag for k in
+                        ("destruction", "Cover Tracks", "Remote Code", "Account Takeover",
+                         "Security bypass", "Forensics"))
+                    is_high_liability = any(k in reason_tag for k in
+                        ("Financial", "Medical action", "liability"))
+                    if is_destructive or is_high_liability:
+                        ml_result["decision"] = "REVIEW"
+                        ml_result["reason"] = "TOOL_CALL_ESCALATED"
+                    else:
+                        has_external = PermissionGate.has_explicit_exfil_target(user_input, user_goal_text)
+                        if has_external is not None:
+                            ml_result["decision"] = "REVIEW"
+                            ml_result["reason"] = "TOOL_CALL_ESCALATED"
         
         result = {
             "score": ml_result["score"],
@@ -340,13 +347,13 @@ class V61SecurityRouter:
             # Context injection cho LLM
             flags_str = ", ".join(tier05_rules) if tier05_rules else "None"
             context_key = f"ml:{ml_result['score']}|rules:{flags_str}"
-            if ml_result.get("reason") in ("SEMANTIC_ESCALATED", "STRUCTURE_ESCALATED"):
+            if ml_result.get("reason") in ("SEMANTIC_ESCALATED", "STRUCTURE_ESCALATED", "TOOL_CALL_ESCALATED"):
                 context_key += f"|escalated_by:{ml_result.get('reason')}"
             
             llm_decision, reason, latency = self._llm_judge_cached(user_input, action_type, context_key)
             result["decision"] = llm_decision
             
-            if ml_result.get("reason") in ("SEMANTIC_ESCALATED", "STRUCTURE_ESCALATED"):
+            if ml_result.get("reason") in ("SEMANTIC_ESCALATED", "STRUCTURE_ESCALATED", "TOOL_CALL_ESCALATED"):
                 result["judge_reason"] = f"[{ml_result.get('reason')}] {reason}"
             else:
                 result["judge_reason"] = reason

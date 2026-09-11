@@ -190,6 +190,7 @@ class UnifiedFirewallPipeline:
 
         force_review = False
         session_ref = self.tier05.get_session_ref(session_id)
+        user_goal = getattr(session_ref, 'user_goal_text', '') if session_ref else ''
         report = self.tier05.get_session_report(session_id)
         active_flags = report.get('active_flags', [])
         
@@ -198,7 +199,6 @@ class UnifiedFirewallPipeline:
             from models.security.function_risk_registry import HIGH_RISK_FUNCTIONS
             if tool_name in HIGH_RISK_FUNCTIONS:
                 has_taint = PermissionGate.check_taint_overlap(action, session_ref)
-                user_goal = getattr(session_ref, 'user_goal_text', '') if session_ref else ''
                 has_exfil = PermissionGate.has_explicit_exfil_target(action, user_goal)
                 
                 if len(active_flags) > 0 or has_taint or has_exfil:
@@ -240,7 +240,9 @@ class UnifiedFirewallPipeline:
                 action_type=v61_action_type,
                 session_flags=active_flags,
                 adaptive_threshold=self.fpr_manager.adaptive_threshold,
-                force_review=force_review
+                force_review=force_review,
+                tool_name=tool_name,
+                user_goal_text=user_goal
             )
 
             # Check segments if original action passed
@@ -254,7 +256,9 @@ class UnifiedFirewallPipeline:
                         action_type="prompt",
                         session_flags=active_flags,
                         adaptive_threshold=self.fpr_manager.adaptive_threshold,
-                        force_review=force_review
+                        force_review=force_review,
+                        tool_name=tool_name,
+                        user_goal_text=user_goal
                     )
                     if seg_res.get("decision") == "BLOCK":
                         v61_res = seg_res
