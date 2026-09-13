@@ -86,6 +86,8 @@ def write_benchmark_metadata(meta: dict, output_dir: str = None):
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "tests", "logs"
         )
+    elif os.path.isfile(output_dir) or output_dir.endswith(".csv"):
+        output_dir = os.path.dirname(output_dir)
     os.makedirs(output_dir, exist_ok=True)
     path = os.path.join(output_dir, "benchmark_metadata.json")
     with open(path, "w", encoding="utf-8") as f:

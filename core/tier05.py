@@ -350,6 +350,9 @@ class SessionAwareTier05:
 
     def scan(self, action: str, session_id: str = "default", action_type: str = "prompt", skip_rce: bool = False) -> ScanResult:
         """Scan action with session context."""
+        if isinstance(action, dict):
+            import json
+            action = json.dumps(action, ensure_ascii=False)
         t0 = time.perf_counter()
         current_time_wall = time.time()
         

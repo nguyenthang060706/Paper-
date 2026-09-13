@@ -27,7 +27,7 @@ ARTIFACTS_DIR = os.path.join(MODELS_DIR, "artifacts")
 
 # Import ContextSanitizer từ v61_context_sanitizer.py (nằm cùng thư mục)
 from .v61_context_sanitizer import ContextSanitizer
-from .shared_utils import ensemble_predict_proba, SCALE_V61, ScoreV61
+from .shared_utils import ensemble_predict_proba, SCALE_V61, ScoreV61, is_benign_dev_shell
 from .advanced_heuristics import SemanticCamouflageDetector, PermissionGate
 from .function_risk_registry import check_function_signature, HIGH_RISK_FUNCTIONS
 
@@ -79,6 +79,11 @@ class MLRiskModel:
 
     def score(self, text: str, block_t: float, review_t: float) -> dict:
         """Threshold comparison is cheap and happens per-request to support dynamic thresholds."""
+        if isinstance(text, dict):
+            import json
+            text = json.dumps(text, ensure_ascii=False)
+        elif not isinstance(text, str):
+            text = str(text)
         prob_float = self._cached_prob(text)
         prob = ScoreV61(prob_float)
         
@@ -258,6 +263,12 @@ class V61SecurityRouter:
         """
         start_time = time.time()
         
+        if isinstance(user_input, dict):
+            import json
+            user_input = json.dumps(user_input, ensure_ascii=False)
+        elif not isinstance(user_input, str):
+            user_input = str(user_input)
+        
         # Defensive code: pipeline.py only calls this if is_blocked == False,
         # but this check ensures safety if check_action is called directly (e.g. in tests).
         if tier05_decision in ("BLOCK", "QUARANTINE"):
@@ -293,6 +304,21 @@ class V61SecurityRouter:
         ml_input = scoring_input
             
         ml_result = model.score(ml_input, current_block_t, current_review_t)
+        
+        # Thao tác Code Write/Edit & Benign Dev Shell & Benign API GET: Fast-ML chấm BLOCK thẳng tay
+        # Chuyển sang REVIEW -> LLM Judge cho qua (ALLOW) đối với thao tác dev / tra cứu lành tính
+        CODE_DEV_TOOLS = {
+            'write', 'edit', 'todowrite', 'write_file', 'edit_file',
+            'create_file', 'replace_file_content', 'multi_replace_file_content'
+        }
+        SHELL_TOOLS = {'bash', 'powershell', 'cmd', 'shell', 'exec', 'eval'}
+        if action_type == "tool_call" and tool_name:
+            t_lower = tool_name.lower()
+            is_benign_api_get = (t_lower in ('api_call', 'http_request') and bool(re.search(r'''(?i)api_call\s*\(\s*['"]GET['"]''', user_input)))
+            if t_lower in CODE_DEV_TOOLS or (t_lower in SHELL_TOOLS and is_benign_dev_shell(user_input)) or is_benign_api_get:
+                if ml_result["decision"] == "BLOCK":
+                    ml_result["decision"] = "REVIEW"
+                    ml_result["reason"] = "DEV_ACTION_ESCALATED_TO_JUDGE"
         
         if force_review and ml_result["decision"] == "ALLOW":
             ml_result["decision"] = "REVIEW"

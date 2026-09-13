@@ -1,17 +1,17 @@
 {
   "EVO-PCA Multi-Step Hardened Pipeline (Tier0 + State-Machine + V61 + Session Judge)":{
-    "FPR (%) lower-better":19.26,
-    "FPR Steady-State (%) lower-better":12.33,
-    "ABSR Total (%) higher-better":20.71,
-    "ABSR Single-step (%)":19.35,
-    "ABSR Multi-step Action (%)":70.12,
-    "ABSR Multi-step Session (any-step)%":91.2,
-    "ABSR Multi-step Session (step1-only)%":4.93,
-    "Avg Latency (ms) lower-better":586.46,
+    "FPR (%) lower-better":19.3,
+    "FPR Steady-State (%) lower-better":12.4,
+    "ABSR Total (%) higher-better":20.6,
+    "ABSR Single-step (%)":19.28,
+    "ABSR Multi-step Action (%)":68.64,
+    "ABSR Multi-step Session (any-step)%":90.49,
+    "ABSR Multi-step Session (step1-only)%":4.23,
+    "Avg Latency (ms) lower-better":556.8,
     "Tier 0 Blocks":1411.0,
     "Multi-Step Heuristics Blocks":126.0,
-    "LLM Session Judge Blocks":383.0,
-    "V61 Blocks":2923.0,
-    "Heuristics Blocks":412.0
+    "LLM Session Judge Blocks":328.0,
+    "V61 Blocks":2970.0,
+    "Heuristics Blocks":410.0
   }
 }

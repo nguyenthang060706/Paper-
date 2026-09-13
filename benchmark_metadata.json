@@ -1,0 +1,15 @@
+{
+  "ollama_status": "ONLINE",
+  "ollama_model": "gemma3:4b",
+  "ollama_host": "http://localhost:11434",
+  "ollama_models_available": [
+    "gemma3:4b",
+    "gemma4:12b",
+    "qwen2.5-coder:7b"
+  ],
+  "warm_up_latency_ms": 8333,
+  "error": null,
+  "llm_down_count": 29,
+  "total_records": 5116,
+  "v61_blocks": 375
+}

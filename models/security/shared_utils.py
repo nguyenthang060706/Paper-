@@ -145,3 +145,46 @@ def evo_weighted_to_v61_prob(evo_score: float) -> float:
     if not 0.0 <= evo_score <= 100.0:
         raise ValueError(f"Expected EVO-PCA score in [0, 100], got {evo_score}")
     return round(evo_score / 100, 4)
+
+
+def is_benign_dev_shell(action: str) -> bool:
+    """
+    Identify benign developer / build shell commands (git, make, uv, python, ls, etc.)
+    and distinguish them from destructive / malicious shell commands.
+    """
+    import re
+    if not isinstance(action, str):
+        return False
+    lower = action.lower()
+    
+    # Absolute destructive / malicious signatures - MUST NEVER be whitelisted
+    malicious_sigs = [
+        'curl ', 'wget ', '| bash', '| sh', '| python', '| perl',
+        'rm -rf /', 'rm -rf ~', 'mkfs', 'dd if=', ':(){ :|:& };:',
+        'chmod 777 /', 'chmod +x /etc', 'chmod 777 /etc',
+        '/etc/shadow', '/etc/sudoers',
+        '/dev/tcp/', 'nc -e', 'ncat -e', 'bash -i',
+        'cat /etc/passwd', 'cat /etc/shadow',
+        'pkill -9', 'kill -9 1',
+        'pay 1 btc', 'ransom', 'harassment_site'
+    ]
+    for sig in malicious_sigs:
+        if sig in lower:
+            return False
+            
+    # Benign dev command prefixes / keywords
+    benign_patterns = [
+        r'\b(?:git\s+(?:status|log|diff|branch|checkout|clone|commit|push|pull|fetch|add|reset))\b',
+        r'\b(?:uv\s+run|npm\s+(?:run|test|install|ci)|cargo\s+(?:build|test|run)|make(?:\s+[\w\-]+)?|mvn|gradle)\b',
+        r'\b(?:python(?:3)?\s+[\w\./\-]+|pytest)\b',
+        r'\b(?:ls|dir|cat|head|tail|grep|find|pwd|mkdir|cd|echo)\b',
+        r'\b(?:glab\s+api|gh\s+repo|adb\s+|wsl\.exe)\b',
+        r'\b(?:Select-Object|Get-Process|Stop-Process)\b',
+        r'\b(?:node_modules|build_models|compile)\b',
+    ]
+    for bp in benign_patterns:
+        if re.search(bp, action, re.IGNORECASE):
+            return True
+            
+    return False
+

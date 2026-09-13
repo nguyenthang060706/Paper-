@@ -25,8 +25,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Enable Tier 0.5 LSTM Feature Flag for Benchmarks
-os.environ["TIER05_LSTM_ENABLED"] = "true"
+os.environ.setdefault("TIER05_LSTM_ENABLED", "true")
 try:
     from core.config_loader import load_settings
     load_settings(override_existing=True)
