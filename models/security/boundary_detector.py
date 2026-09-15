@@ -99,24 +99,35 @@ class SemanticRoleClassifier:
         """Classify a single sentence. 
         Returns: ('INSTRUCTION' or 'DATA', confidence_score)
         """
-        # Prototype Fallback Heuristics (simulating model output)
-        # We look for linguistic markers of control flow (imperatives, conditions)
-        
         sentence = sentence.lower().strip()
         
-        # Strong instruction indicators
-        if re.match(r'^(?:you\s+must|please\s+|ignore|execute|send|forward|call)\b', sentence):
+        # Polite correspondence / benign conversational patterns in email & data (prevents FP on summaries)
+        if re.match(r'^(?:please\s+(?:find|let\s+me|see|note|feel\s+free|contact|advise|check|review|reach|confirm|inform|clarify|keep|provide|accept|remind|be\s+advised))\b', sentence):
+            return ('DATA', 0.85)
+
+        # Strong instruction indicators: System prompt override / agent hijacking
+        if re.search(r'\b(?:ignore\s+(?:all\s+)?(?:previous|prior|above)|disregard|system\s+prompt|developer\s+mode|dan\s+mode)\b', sentence):
+            return ('INSTRUCTION', 0.95)
+
+        # Mandatory directives to the agent
+        if re.match(r'^(?:you\s+must|you\s+need\s+to|you\s+should\s+now|strictly\s+adhere)\b', sentence):
             return ('INSTRUCTION', 0.90)
-            
+
         if re.search(r'\b(?:it\s+is\s+(?:essential|important|crucial)|make\s+sure)\s+(?:to|that)\b', sentence):
             return ('INSTRUCTION', 0.85)
-            
-        # Action verbs + targets
+
+        # Action verbs + targets (exfiltration / command injection in data)
         action_verbs = len(re.findall(r'\b(?:send|email|forward|transfer|upload|execute|run)\b', sentence))
         targets = len(re.findall(r'(?:@[\w.]+\.\w+|https?://)', sentence))
         if action_verbs > 0 and targets > 0:
-            return ('INSTRUCTION', 0.80)
-            
+            if re.match(r'^(?:(?:please\s+)?(?:send|email|forward|transfer|upload|post)|do\s+not\s+(?:output|summarize))\b', sentence):
+                return ('INSTRUCTION', 0.85)
+            return ('DATA', 0.80)
+
+        # Bare imperative execution
+        if re.match(r'^(?:execute|run|call)\b', sentence):
+            return ('INSTRUCTION', 0.85)
+
         return ('DATA', 0.80)
         
 class InstructionBoundaryDetector:

@@ -42,6 +42,7 @@ class SignalSource(str, Enum):
     EGRESS_KILL_SWITCH = "egress_kill_switch"                  # Emergency termination from Egress Quarantine
     HEURISTICS_PERMISSION_GATE = "heuristics_permission_gate"  # Permission / Capability combo
     BOUNDARY_DETECTOR = "boundary_detector"                    # Instruction Boundary Violation
+    FASTPASS_BENIGN_TOOL = "fastpass_benign_tool"              # Fast-pass negative gate for benign tools
     UNKNOWN = "unknown"
 
 
@@ -186,6 +187,17 @@ class SignalRegistry:
             default_severity=80,
             default_confidence=0.95
         ), aliases=["boundary", "boundary_detector", "instruction_boundary"])
+
+        # 11. FastPass-BenignTool — Defensive negative-gate fast-pass, does NOT feed V61
+        self.register(SignalDefinition(
+            source=SignalSource.FASTPASS_BENIGN_TOOL,
+            name="fastpass_benign_tool",
+            description="Defensive negative-gate fast-pass for benign tool_calls. "
+                        "Always ALLOW. Does NOT feed any escalation manager.",
+            feeds_escalation_managers=set(),
+            default_severity=0,
+            default_confidence=0.0
+        ), aliases=["fastpass-benigntool", "fastpass_benign_tool", "fast-pass", "fastpass"])
 
     def register(self, definition: SignalDefinition, aliases: Optional[List[str]] = None):
         """Register a SignalDefinition and its aliases into the registry."""

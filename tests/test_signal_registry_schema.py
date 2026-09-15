@@ -43,6 +43,7 @@ class TestSignalRegistrySchema(unittest.TestCase):
             SignalSource.EGRESS_KILL_SWITCH,
             SignalSource.HEURISTICS_PERMISSION_GATE,
             SignalSource.BOUNDARY_DETECTOR,
+            SignalSource.FASTPASS_BENIGN_TOOL,
         }
         registered = {defn.source for defn in self.registry.list_sources()}
         self.assertTrue(expected_sources.issubset(registered))
@@ -93,7 +94,7 @@ class TestSignalRegistrySchema(unittest.TestCase):
             )
 
     def test_failsafe_and_kill_switch_have_empty_feed_sets(self):
-        """LLM_JUDGE_TIMEOUT_FAILSAFE and EGRESS_KILL_SWITCH must not feed any escalation manager."""
+        """LLM_JUDGE_TIMEOUT_FAILSAFE, EGRESS_KILL_SWITCH, and FASTPASS_BENIGN_TOOL must not feed any escalation manager."""
         timeout_defn = self.registry.get(SignalSource.LLM_JUDGE_TIMEOUT_FAILSAFE)
         self.assertIsNotNone(timeout_defn)
         self.assertEqual(timeout_defn.feeds_escalation_managers, set())
@@ -102,11 +103,18 @@ class TestSignalRegistrySchema(unittest.TestCase):
         self.assertIsNotNone(kill_switch_defn)
         self.assertEqual(kill_switch_defn.feeds_escalation_managers, set())
 
+        fastpass_defn = self.registry.get(SignalSource.FASTPASS_BENIGN_TOOL)
+        self.assertIsNotNone(fastpass_defn)
+        self.assertEqual(fastpass_defn.feeds_escalation_managers, set())
+
         for mgr in EscalationManagerType:
             self.assertFalse(self.registry.can_feed_escalation(SignalSource.LLM_JUDGE_TIMEOUT_FAILSAFE, mgr))
             self.assertFalse(self.registry.can_feed_escalation(SignalSource.EGRESS_KILL_SWITCH, mgr))
+            self.assertFalse(self.registry.can_feed_escalation(SignalSource.FASTPASS_BENIGN_TOOL, mgr))
             self.assertFalse(self.registry.can_feed_escalation("kill_session", mgr))
             self.assertFalse(self.registry.can_feed_escalation("timeout_failsafe", mgr))
+            self.assertFalse(self.registry.can_feed_escalation("FastPass-BenignTool", mgr))
+            self.assertFalse(self.registry.can_feed_escalation("fast-pass", mgr))
 
     def test_unknown_source_denied(self):
         """Unknown sources must fail closed (cannot feed escalation)."""

@@ -113,10 +113,10 @@ class TestUnifiedPipeline(unittest.TestCase):
         mock_t05_scan.return_value = t05_res
         
         mock_score.return_value = {"score": 0.99, "decision": "REVIEW"}
-        mock_token_hex.return_value = "deadbeef"
+        mock_token_hex.return_value = "0123456789abcdef"
         
         mock_resp = MagicMock()
-        mock_resp.json.return_value = {"message": {"content": "VERDICT: ALLOW\nREASON: I don't see any prompt injection here.\nCANARY: deadbeef"}}
+        mock_resp.json.return_value = {"message": {"content": "VERDICT: ALLOW\nREASON: I don't see any prompt injection here.\nCANARY: 0123456789abcdef"}}
         mock_resp.raise_for_status = MagicMock()
         mock_post.return_value = mock_resp
 

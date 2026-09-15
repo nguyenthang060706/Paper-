@@ -28,11 +28,15 @@
     "suspicious_band_min": 0.40,
     "heuristic_ttl_seconds": 120.0,
     "max_benign_steps": 40,
-    "llm_judge_timeout": 5.0
+    "llm_judge_timeout": 3.0
   },
   "tier05_lstm": {
     "block_threshold": 0.98,
     "semantic_delta_threshold": 0.80,
     "confidence_propagation_floor": 0.50
+  },
+  "early_intent": {
+    "risk_threshold": 0.50,
+    "max_forced_actions": 2
   }
 }

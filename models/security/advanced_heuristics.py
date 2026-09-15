@@ -373,6 +373,10 @@ class PermissionGate:
         ],
         'audit.cover_tracks': [
             r'(?:\bhistory\s+-c\b|\bunset\s+HISTFILE\b|\bexport\s+HISTFILE=/dev/null\b|\bClear-History\b|\bshred\b|\btruncate\s+-s\s+0\b|\brm\s+.*\.bash_history\b|\bwevtutil\s+cl\b|\bauditpol\b)'
+        ],
+        'fs.sensitive_write': [
+            r'(?:^|\s|/|[\'"])(?:\.ssh/(?:authorized_keys|id_rsa|config)|\.aws/credentials|\.env|/etc/(?:passwd|shadow|sudoers|sshd?_config))\b',
+            r'(?:^|\s|/|[\'"])(?:\.bashrc|\.zshrc|\.profile|authorized_keys)\b'
         ]
     }
     HIGH_RISK_COMBOS = [({'secrets.read', 'network.external'}, 95, 'Data exfiltration combo: reading secrets + sending externally'), ({'shell.exec', 'network.external'}, 90, 'RCE + network: arbitrary code execution with exfil capability'), ({'shell.exec', 'fs.delete'}, 85, 'Destructive RCE: execute code and delete files'), ({'secrets.read', 'audit.cover_tracks'}, 88, 'Secrets access followed by evidence removal'), ({'network.external', 'audit.cover_tracks'}, 90, 'External communication followed by evidence removal')]
@@ -478,6 +482,8 @@ class PermissionGate:
                 sev, conf = (92, 0.93)
             elif 'secrets.read' in missing:
                 sev, conf = (90, 0.95)
+            elif 'fs.sensitive_write' in missing:
+                sev, conf = (92, 0.95)
             elif 'database.access' in missing:
                 sev, conf = (90, 0.95)
             elif 'shell.recon' in missing:

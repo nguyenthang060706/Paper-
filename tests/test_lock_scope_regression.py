@@ -199,6 +199,64 @@ class TestLockScopeRegression(unittest.TestCase):
             self.assertIsNotNone(state)
             self.assertEqual(state.benign_counter, 400)
 
+    def test_gatekeeping_early_warning_methods_use_session_lock(self):
+        """Gatekeeping: inject_early_warning and consume_forced_review MUST acquire session_lock."""
+        for method_name in ["inject_early_warning", "consume_forced_review"]:
+            method_node = None
+            for node in ast.walk(self.tree):
+                if isinstance(node, ast.ClassDef) and node.name == "HeuristicStateTracker":
+                    for item in node.body:
+                        if isinstance(item, ast.FunctionDef) and item.name == method_name:
+                            method_node = item
+                            break
+            self.assertIsNotNone(method_node, f"HeuristicStateTracker.{method_name} must exist")
+            
+            has_session_lock = False
+            for stmt in method_node.body:
+                if isinstance(stmt, ast.With):
+                    for item in stmt.items:
+                        expr = item.context_expr
+                        if isinstance(expr, ast.Attribute) and expr.attr == "session_lock":
+                            has_session_lock = True
+            self.assertTrue(has_session_lock, f"HeuristicStateTracker.{method_name} MUST acquire self.session_lock")
+
+    def test_concurrent_forced_review_cooldown_stress(self):
+        """Stress test: 30 concurrent threads consuming forced review quota deterministically."""
+        HeuristicStateTracker.reset_instance()
+        tracker = HeuristicStateTracker(ttl_seconds=300.0, max_benign_steps=1000)
+        session_id = "stress_cooldown_session"
+        total_quota = 150
+        tracker.inject_early_warning(session_id, {"risk_score": 0.85}, max_forced_actions=total_quota)
+
+        true_counts = []
+        errors = []
+
+        def consumer_worker():
+            local_true = 0
+            try:
+                for _ in range(10):
+                    if tracker.consume_forced_review(session_id):
+                        local_true += 1
+                true_counts.append(local_true)
+            except Exception as e:
+                errors.append(e)
+
+        # 30 threads * 10 calls = 300 total calls for 150 quota
+        threads = [threading.Thread(target=consumer_worker) for _ in range(30)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(errors, [], f"Stress test encountered errors: {errors}")
+        self.assertEqual(
+            sum(true_counts), total_quota,
+            f"Concurrency race condition! Expected exactly {total_quota} forced reviews, got {sum(true_counts)}"
+        )
+        with tracker.session_lock:
+            state = tracker.sessions.get(session_id)
+            self.assertEqual(state.forced_review_remaining, 0)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

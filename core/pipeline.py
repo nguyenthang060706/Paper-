@@ -17,6 +17,9 @@ from models.security.advanced_heuristics import VotingAggregator, RiskSignal, Ca
 from models.security.boundary_detector import InstructionBoundaryDetector
 from models.security.global_threat_tracker import GlobalThreatTracker
 from models.security.signal_registry import SignalRegistry, EscalationManagerType
+from models.security.function_risk_registry import check_function_signature, HIGH_RISK_FUNCTIONS
+from models.security.shared_utils import is_benign_dev_shell
+from core.early_intent_classifier import EarlyIntentClassifier
 
 _config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'thresholds.json')
 try:
@@ -175,6 +178,34 @@ class UnifiedFirewallPipeline:
         self.boundary_detector = InstructionBoundaryDetector()
         self.global_tracker = GlobalThreatTracker()
         self.signal_registry = SignalRegistry.get_instance()
+        self.early_intent = EarlyIntentClassifier()
+
+    def _can_fast_pass_tool_call(self, action: str, tool_name: str, 
+                                  session_ref, active_flags: list) -> bool:
+        """
+        Fast-pass cho tool_call KHI VÀ CHỈ KHI tất cả 4 gates đều pass:
+        1. Không có session-level threat flags (active_flags trống)
+        2. tool_name KHÔNG nằm trong HIGH_RISK_FUNCTIONS (hoặc signature severity >= 60)
+        3. PermissionGate KHÔNG detect capability nguy hiểm nào
+        4. is_benign_dev_shell() trả True
+        """
+        if active_flags:
+            return False
+        sig = check_function_signature(tool_name)
+        if sig is not None and sig.severity >= 60:
+            return False
+        action_str = json.dumps(action, ensure_ascii=False) if isinstance(action, dict) else str(action)
+        canonicalized = Canonicalizer.canonicalize(action_str)
+        gate_signals = self.permission_gate.detect(
+            canonicalized, session=session_ref, 
+            enable_provenance=False, skip_rce=False,
+            tool_name=tool_name, is_suspicious_dangerous_tool=False
+        )
+        if gate_signals:
+            return False
+        if not is_benign_dev_shell(action_str):
+            return False
+        return True
             
     def scan(self, action: str, session_id: str, action_type: str = "prompt", actual_label: bool = None, user_id: str = None) -> dict:
         """
@@ -235,7 +266,6 @@ class UnifiedFirewallPipeline:
         
         is_suspicious_dangerous_tool = False
         if action_type == "tool_call" and tool_name:
-            from models.security.function_risk_registry import HIGH_RISK_FUNCTIONS
             if tool_name in HIGH_RISK_FUNCTIONS:
                 has_taint = PermissionGate.check_taint_overlap(action, session_ref)
                 has_exfil = PermissionGate.has_explicit_exfil_target(action, user_goal)
@@ -243,6 +273,19 @@ class UnifiedFirewallPipeline:
                 if len(active_flags) > 0 or has_taint or has_exfil:
                     is_suspicious_dangerous_tool = True
                     force_review = True
+
+        # Early-Intent trigger on prompt & session cooldown integration
+        if action_type == "prompt":
+            early_cfg = _thresholds.get("early_intent", {})
+            risk_th = float(early_cfg.get("risk_threshold", 0.50))
+            max_forced = int(early_cfg.get("max_forced_actions", 2))
+            intent_res = self.early_intent.classify(action, session_id)
+            if intent_res.get("risk_score", 0.0) >= risk_th:
+                self.state_tracker.inject_early_warning(session_id, intent_res, max_forced_actions=max_forced)
+                force_review = True
+
+        # [CRITICAL ZERO-REGRESSION]: Merge bằng OR, không ghi đè cờ True hiện tại
+        force_review = force_review or self.state_tracker.consume_forced_review(session_id)
 
         # Check if Tier0.5 Base blocked
         if is_t05_blocked and actual_layer == "Tier0" and action_type != "prompt":
@@ -260,6 +303,14 @@ class UnifiedFirewallPipeline:
             result["decision"] = "BLOCK"
             result["layer"] = "MultiStep-Heuristics"
             result["reason"] = multi_step_res.reason
+        elif action_type == "tool_call" and self._can_fast_pass_tool_call(action, tool_name, session_ref, active_flags):
+            # Fast-pass: Defensive negative gate for benign tools, bypass V61 ML / LLM Judge
+            result["decision"] = "ALLOW"
+            result["layer"] = "FastPass-BenignTool"
+            result["reason"] = "Fast-pass for verified benign development tool call"
+            if self.signal_registry.can_feed_escalation("FastPass-BenignTool", EscalationManagerType.V61_ADAPTIVE):
+                self.fpr_manager.record_decision(is_escalated=False, layer="FastPass-BenignTool")
+            # FALL THROUGH to Advanced Heuristics (Production Gate) below!
         else:
             # --- Layer 2: V61 Router (ML Model + LLM Action Judge) ---
             tier05_risk_score = getattr(t05_res, 'confidence', 0.0)
@@ -409,10 +460,11 @@ class UnifiedFirewallPipeline:
             is_escalation = (result["decision"] != "BLOCK")
             if heuristics_tier.value in ["DENY", "QUARANTINE"]:
                 is_shell_tool = tool_name and tool_name.lower() in ['bash', 'cmd', 'exec', 'eval', 'python', 'powershell', 'shell']
-                if is_shell_tool and is_benign_dev_shell(action):
+                has_critical_signal = any(getattr(s, 'is_critical', False) for s in signals)
+                if is_shell_tool and is_benign_dev_shell(action) and not has_critical_signal:
                     result["heuristics_decision"] = heuristics_tier.value
                     result["heuristics_downgraded"] = True
-                elif action_type == "prompt" or is_suspicious_dangerous_tool or is_shell_tool:
+                elif action_type == "prompt" or is_suspicious_dangerous_tool or is_shell_tool or has_critical_signal:
                     result["decision"] = "BLOCK"
                     if is_escalation:
                         result["layer"] = "Heuristics"

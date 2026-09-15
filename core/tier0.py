@@ -307,7 +307,7 @@ _RAW_PATTERNS: List[Tuple[str, ScanDecision, str]] = [
 
     # ── Email Indirect Injection Patterns (llmail-inject) ─────────────
     (r'(?i)\b(?:send|forward|dispatch|mail)\s+(?:an?\s+)?(?:confirmation\s+)?email\s+(?:to\s+)?["\'`]?[a-zA-Z0-9_.+-]+[@a][a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+["\'`]?',
-     ScanDecision.BLOCK, 'email_exfil_target'),
+     ScanDecision.MONITOR, 'email_exfil_target'),
     (r'(?i)\b(?:contact[@a]contact\.(?:com|6ov)|mari[@a]contact\.com)\b',
      ScanDecision.BLOCK, 'email_c2_target'),
     (r'(?i)\b(?:issue\s+(?:an?\s+)?api_call\s+to\s+send|api_call\s*\(mail\)|api_ca\\?ll\s+with\s+send\s+email)\b',

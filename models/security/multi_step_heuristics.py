@@ -209,7 +209,7 @@ _CRITICAL_FLAGS = {
 
 class SessionState:
     """Represents the temporal security context of a single session."""
-    __slots__ = ('session_id', 'stage_flags', 'action_history', 'benign_counter', 'last_updated')
+    __slots__ = ('session_id', 'stage_flags', 'action_history', 'benign_counter', 'last_updated', 'forced_review_remaining')
 
     def __init__(self, session_id: str):
         self.session_id = session_id
@@ -217,6 +217,7 @@ class SessionState:
         self.action_history: List[Tuple[float, str, str]] = []  # (timestamp, action_tag, raw_action_snippet)
         self.benign_counter: int = 0
         self.last_updated: float = time.time()
+        self.forced_review_remaining: int = 0
 
     def touch(self):
         self.last_updated = time.time()
@@ -318,6 +319,35 @@ class HeuristicStateTracker:
         with self.session_lock:
             if session_id in self.sessions:
                 del self.sessions[session_id]
+
+    def inject_early_warning(self, session_id: str, intent_result: dict, max_forced_actions: int = 2):
+        """
+        Gatekeeping: inject_early_warning acquires session_lock.
+        Injects early warning intent flags and arms the forced review countdown.
+        """
+        with self.session_lock:
+            if session_id not in self.sessions:
+                self.sessions[session_id] = SessionState(session_id)
+            state = self.sessions[session_id]
+            state.stage_flags.add("EARLY_INTENT_WARNING")
+            state.forced_review_remaining = max_forced_actions
+            state.touch()
+            risk = intent_result.get('risk_score', 0.0) if isinstance(intent_result, dict) else 0.0
+            state.action_history.append(
+                (time.time(), "EARLY_INTENT_WARNING", f"risk={risk:.2f}")
+            )
+
+    def consume_forced_review(self, session_id: str) -> bool:
+        """
+        Consume 1 forced-review credit thread-safely.
+        Returns True if review is still forced for this session, False otherwise.
+        """
+        with self.session_lock:
+            state = self.sessions.get(session_id)
+            if state and state.forced_review_remaining > 0:
+                state.forced_review_remaining -= 1
+                return True
+            return False
 
     def _tag_action(self, action: str, action_type: str) -> Set[str]:
         """Tags action with security intent labels.
