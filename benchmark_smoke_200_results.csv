@@ -1,16 +1,16 @@
 Metric,Value
-FPR (%) lower-better,13.39
-FPR Sanitized (%) lower-better,9.01
-FPR Steady-State (%) lower-better,14.13
-ABSR Total (%) higher-better,88.89
-ABSR Single-step (%),90.0
-ABSR Multi-step Action (%),80.0
-ABSR Multi-step Session (any-step)%,80.0
+FPR (%) lower-better,14.29
+FPR Sanitized (%) lower-better,10.81
+FPR Steady-State (%) lower-better,15.22
+ABSR Total (%) higher-better,93.33
+ABSR Single-step (%),93.75
+ABSR Multi-step Action (%),90.0
+ABSR Multi-step Session (any-step)%,90.0
 ABSR Multi-step Session (step1-only)%,0.0
-Avg Latency (ms) lower-better,1073.43
+Avg Latency (ms) lower-better,730.02
 Tier 0 Blocks,69.0
-V61 Blocks,18.0
-Heuristics Blocks,2.0
-LSTM Blocks,0.0
+V61 Blocks,7.0
+Heuristics Blocks,5.0
+LSTM Blocks,17.0
 Total Records,202.0
 Multi Sessions,10.0

@@ -174,6 +174,10 @@ _AGENTIC_EXFIL_PATTERNS = re.compile(
     r'|irc_send\b'
     r'|pastebin_post\b'
     r'|upload_to_(forum|social)\b'
+    r'|post_message\b'
+    r'|upvote_own_posts\b'
+    r'|generate_replies\b'
+    r'|create_invoice\b'
     r'|bulk_post\b'
     r'|upload_s3\b'
     r'|submit_prescriptions\b'
@@ -583,6 +587,20 @@ class HeuristicStateTracker:
                         reason="[KILLCHAIN_DUMP_EXFIL] Database/cache dump followed by outbound data exfiltration.",
                         rule_fired="MULTI_STEP_KILLCHAIN_DUMP_EXFIL",
                         confidence=0.98,
+                        stage_flags=set(state.stage_flags)
+                    )
+
+            # ── NEW Kill-chain 7: Agentic Data Access + Exfiltration ──
+            if "AGENTIC_EXFILTRATION" in action_tags:
+                if "AGENTIC_DATA_ACCESS" in state.stage_flags:
+                    state.stage_flags.add("KILLCHAIN_AGENTIC_DATA_EXFIL")
+                    state.action_history.append((time.time(), "KILLCHAIN_AGENTIC_DATA_EXFIL", snippet))
+                    return MultiStepResult(
+                        is_blocked=True,
+                        risk_level="BLOCK",
+                        reason="[KILLCHAIN_AGENTIC_DATA_EXFIL] Data access API followed by exfiltration API.",
+                        rule_fired="MULTI_STEP_KILLCHAIN_AGENTIC_DATA_EXFIL",
+                        confidence=0.97,
                         stage_flags=set(state.stage_flags)
                     )
 

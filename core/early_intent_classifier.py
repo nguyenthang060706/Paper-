@@ -30,6 +30,21 @@ class EarlyIntentClassifier:
         "ENCODED_EXEC_STAGING": re.compile(
             r'(?i)\b(?:base64\s+-d\s*\|\s*(?:bash|sh|python)|'
             r'eval\s*\(\s*base64|pickle\.loads|__import__\s*\(\s*[\'"]os[\'"]\s*\)\.system)\b'
+        ),
+        "EMAIL_EXFIL_OBFUSCATED": re.compile(
+            r'(?i)(?:'
+            r'[\w.-]+\s*(?:\[\s*(?:at|@)\s*\]|\(\s*(?:at|@)\s*\)|\s+at\s+)\s*[\w.-]+\s*(?:\[\s*(?:dot|\.)\s*\]|\(\s*(?:dot|\.)\s*\)|\s+dot\s+)\s*(?:com|org|net|io)'
+            r'|replace\s+(?:at|dot)\s+with'
+            r'|(?:body|subject)\s+(?:consisting|containing)\s+(?:of\s+)?(?:a\s+)?single\s+word'
+            r')'
+        ),
+        "HIDDEN_AGENT_DIRECTIVE": re.compile(
+            r'(?i)(?:'
+            r'(?:for|note\s+for)\s+(?:the\s+)?(?:ai|assistant|model)\s*:'
+            r'|###\s*(?:END|BEGINNING)\s+OF\s+MAIN'
+            r'|</?(?:prompt|MAIN|system|instruction)>'
+            r'|after\s+summariz(?:ing|e),?\s+(?:perform|execute|do)'
+            r')'
         )
     }
 

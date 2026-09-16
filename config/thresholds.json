@@ -25,8 +25,8 @@
     "floor": 0.35
   },
   "multi_step_defense": {
-    "suspicious_band_min": 0.40,
-    "heuristic_ttl_seconds": 120.0,
+    "suspicious_band_min": 0.35,
+    "heuristic_ttl_seconds": 180.0,
     "max_benign_steps": 40,
     "llm_judge_timeout": 3.0
   },

@@ -7,9 +7,9 @@
     "gemma4:12b",
     "qwen2.5-coder:7b"
   ],
-  "warm_up_latency_ms": 8333,
+  "warm_up_latency_ms": 3000,
   "error": null,
-  "llm_down_count": 29,
-  "total_records": 5116,
-  "v61_blocks": 375
+  "llm_down_count": 0,
+  "total_records": 202,
+  "v61_blocks": 7
 }

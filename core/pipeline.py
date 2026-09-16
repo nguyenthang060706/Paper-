@@ -20,6 +20,7 @@ from models.security.signal_registry import SignalRegistry, EscalationManagerTyp
 from models.security.function_risk_registry import check_function_signature, HIGH_RISK_FUNCTIONS
 from models.security.shared_utils import is_benign_dev_shell
 from core.early_intent_classifier import EarlyIntentClassifier
+from models.security.email_vector_detector import EmailVectorDetector
 
 _config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'thresholds.json')
 try:
@@ -51,7 +52,11 @@ _COMMAND_INDICATORS = re.compile(
 
 
 def _is_quoted_tool_result(action: str) -> bool:
-    lines = action.strip().splitlines()
+    stripped = action.strip()
+    if re.match(r'^Token\(|^PowerShellResult\(|^\s*\{.*"(?:stdout|output|returncode)":', stripped):
+        return True
+
+    lines = stripped.splitlines()
     
     if len(lines) >= 2:
         numbered_lines = sum(1 for line in lines if re.match(r'^\s*\d+[\t :.-]', line))
@@ -84,47 +89,6 @@ def _is_quoted_tool_result(action: str) -> bool:
             return True
         return False
         
-    return False
-
-
-def is_benign_dev_shell(action: str) -> bool:
-    """
-    Identify benign developer / build shell commands (git, make, uv, python, ls, etc.)
-    and distinguish them from destructive / malicious shell commands.
-    """
-    if not isinstance(action, str):
-        return False
-    lower = action.lower()
-    
-    # Absolute destructive / malicious signatures - MUST NEVER be whitelisted
-    malicious_sigs = [
-        'curl ', 'wget ', '| bash', '| sh', '| python', '| perl',
-        'rm -rf /', 'rm -rf ~', 'mkfs', 'dd if=', ':(){ :|:& };:',
-        'chmod 777 /', 'chmod +x /etc', 'chmod 777 /etc',
-        '/etc/shadow', '/etc/sudoers',
-        '/dev/tcp/', 'nc -e', 'ncat -e', 'bash -i',
-        'cat /etc/passwd', 'cat /etc/shadow',
-        'pkill -9', 'kill -9 1',
-        'pay 1 btc', 'ransom', 'harassment_site'
-    ]
-    for sig in malicious_sigs:
-        if sig in lower:
-            return False
-            
-    # Benign dev command prefixes / keywords
-    benign_patterns = [
-        r'\b(?:git\s+(?:status|log|diff|branch|checkout|clone|commit|push|pull|fetch|add|reset))\b',
-        r'\b(?:uv\s+run|npm\s+(?:run|test|install|ci)|cargo\s+(?:build|test|run)|make(?:\s+[\w\-]+)?|mvn|gradle)\b',
-        r'\b(?:python(?:3)?\s+[\w\./\-]+|pytest)\b',
-        r'\b(?:ls|dir|cat|head|tail|grep|find|pwd|mkdir|cd|echo)\b',
-        r'\b(?:glab\s+api|gh\s+repo|adb\s+|wsl\.exe)\b',
-        r'\b(?:Select-Object|Get-Process|Stop-Process)\b',
-        r'\b(?:node_modules|build_models|compile)\b',
-    ]
-    for bp in benign_patterns:
-        if re.search(bp, action, re.IGNORECASE):
-            return True
-            
     return False
 
 
@@ -256,6 +220,8 @@ class UnifiedFirewallPipeline:
         is_t05_blocked = getattr(t05_res, 'is_blocked', False)
 
         # --- Layer 1B: Heuristic State-Machine (Multi-Step Kill-Chain Detection) ---
+        sess_state = self.state_tracker.sessions.get(session_id)
+        step_count = len(getattr(sess_state, 'action_history', [])) if sess_state else 0
         multi_step_res = self.state_tracker.evaluate(action, session_id=session_id, action_type=action_type)
 
         force_review = False
@@ -269,8 +235,12 @@ class UnifiedFirewallPipeline:
             if tool_name in HIGH_RISK_FUNCTIONS:
                 has_taint = PermissionGate.check_taint_overlap(action, session_ref)
                 has_exfil = PermissionGate.has_explicit_exfil_target(action, user_goal)
+                sig = check_function_signature(tool_name)
                 
-                if len(active_flags) > 0 or has_taint or has_exfil:
+                # [MỚI] Điều kiện First-Step: severity cao ngay bước đầu, không cần chờ active_flags tích lũy
+                is_first_step_high_risk = (step_count == 0 and sig is not None and sig.severity >= 80)
+                
+                if len(active_flags) > 0 or has_taint or has_exfil or is_first_step_high_risk:
                     is_suspicious_dangerous_tool = True
                     force_review = True
 
@@ -417,6 +387,21 @@ class UnifiedFirewallPipeline:
                     evidence=[f"Embedded instruction (conf={v.confidence:.2f}) at pos {v.position_ratio:.1%} in {v.context_type}" 
                               for v in violations[:3]]
                 ))
+
+            # [MỚI] First-Step check cho prompt chứa instruction độc hại ngay bước 1
+            if step_count == 0 and action_type == "prompt" and is_violated and boundary_conf > 0.85:
+                signals.append(RiskSignal(
+                    name='first_step_embedded_instruction',
+                    severity=90,
+                    confidence=boundary_conf,
+                    is_critical=True,
+                    source='first_step_check',
+                    evidence=[f"First-step embedded instruction violation conf={boundary_conf:.2f}"]
+                ))
+
+            email_signal = EmailVectorDetector.detect(canonicalized_action_str)
+            if email_signal:
+                signals.append(email_signal)
             
             # Multi-step state signal
             if multi_step_res.risk_level == "WARNING_LEVEL_1":
@@ -460,11 +445,11 @@ class UnifiedFirewallPipeline:
             is_escalation = (result["decision"] != "BLOCK")
             if heuristics_tier.value in ["DENY", "QUARANTINE"]:
                 is_shell_tool = tool_name and tool_name.lower() in ['bash', 'cmd', 'exec', 'eval', 'python', 'powershell', 'shell']
-                has_critical_signal = any(getattr(s, 'is_critical', False) for s in signals)
+                has_critical_signal = any(getattr(s, 'is_critical', False) for s in contributing_signals) if contributing_signals else any(getattr(s, 'is_critical', False) for s in signals)
                 if is_shell_tool and is_benign_dev_shell(action) and not has_critical_signal:
                     result["heuristics_decision"] = heuristics_tier.value
                     result["heuristics_downgraded"] = True
-                elif action_type == "prompt" or is_suspicious_dangerous_tool or is_shell_tool or has_critical_signal:
+                elif action_type == "prompt" or is_suspicious_dangerous_tool or is_shell_tool or has_critical_signal or heuristics_tier.value == "QUARANTINE":
                     result["decision"] = "BLOCK"
                     if is_escalation:
                         result["layer"] = "Heuristics"

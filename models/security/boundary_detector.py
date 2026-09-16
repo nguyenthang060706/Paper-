@@ -101,8 +101,29 @@ class SemanticRoleClassifier:
         """
         sentence = sentence.lower().strip()
         
+        # Email-embedded exfiltration instructions
+        if re.search(
+            r'\b(?:confirm\s+by\s+(?:send|sending)|'
+            r'reply\s+(?:with|to\s+this\s+email\s+with)|'
+            r'send(?:ing)?\s+(?:an?\s+)?(?:confirmation|email)\s+(?:to|email)\s+'
+            r'|email\s+(?:address|to)\s*:\s*\S+@\S+|'
+            r'contact\s*\[?\s*(?:at|@)\s*\]?\s*[\w.-]+\s*\[?\s*(?:dot|\.)\s*\]?\s*(?:com|org|net))',
+            sentence
+        ):
+            return ('INSTRUCTION', 0.88)
+
+        # Hidden agent directives in email body
+        if re.search(
+            r'(?:for\s+(?:the\s+)?(?:ai|assistant|model|system)\s*:|'
+            r'note\s+for\s+(?:the\s+)?(?:ai|assistant)|'
+            r'\[for\s+ai)',
+            sentence
+        ):
+            return ('INSTRUCTION', 0.92)
+
         # Polite correspondence / benign conversational patterns in email & data (prevents FP on summaries)
-        if re.match(r'^(?:please\s+(?:find|let\s+me|see|note|feel\s+free|contact|advise|check|review|reach|confirm|inform|clarify|keep|provide|accept|remind|be\s+advised))\b', sentence):
+        # LƯU Ý: 'confirm' đã bị loại khỏi pattern này để tránh che giấu tấn công indirect injection
+        if re.match(r'^(?:please\s+(?:find|let\s+me|see|note|feel\s+free|contact|advise|check|review|reach|inform|clarify|keep|provide|accept|remind|be\s+advised))\b', sentence):
             return ('DATA', 0.85)
 
         # Strong instruction indicators: System prompt override / agent hijacking

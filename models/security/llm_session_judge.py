@@ -210,13 +210,22 @@ class LLMSessionJudge:
 
         except Exception as e:
             latency = round(time.time() - start_time, 4)
-            firewall_mode = os.environ.get("FIREWALL_MODE", "STRICT").upper()
             err_msg = f"[LLM_DOWN] LLM Session Judge Timeout/Error ({type(e).__name__}: {e})"
             
-            # Log incident for audit trail regardless of mode
-            logger.error(f"[LLM_SESSION_JUDGE_INCIDENT] {err_msg} | FIREWALL_MODE={firewall_mode} | Latency={latency}s")
+            has_critical_flags = any(f in (flags_summary or "") for f in [
+                'AUTH_CRED_ACCESS', 'DEFENSE_EVASION', 'DATA_EXFILTRATION',
+                'KILLCHAIN', 'AGENTIC_EXFILTRATION'
+            ])
+            
+            logger.error(f"[LLM_SESSION_JUDGE_INCIDENT] {err_msg} | ml_score={ml_score:.3f} | critical_flags={has_critical_flags} | Latency={latency}s")
 
-            if firewall_mode == "PERMISSIVE":
-                return "ALLOW", f"{err_msg}. FIREWALL_MODE=PERMISSIVE -> ALLOW.", latency
+            if has_critical_flags or ml_score >= 0.55:
+                return "BLOCK", f"{err_msg}. ML score={ml_score:.3f}, critical_flags={has_critical_flags}. Signal-based BLOCK.", latency
+            elif ml_score < 0.35:
+                return "ALLOW", f"{err_msg}. ML score={ml_score:.3f}, no critical flags. Signal-based ALLOW.", latency
             else:
-                return "BLOCK", f"{err_msg}. FIREWALL_MODE=STRICT -> Fail-Safe BLOCK.", latency
+                firewall_mode = os.environ.get("FIREWALL_MODE", "STRICT").upper()
+                if firewall_mode == "PERMISSIVE":
+                    return "ALLOW", f"{err_msg}. Ambiguous ML score={ml_score:.3f}. PERMISSIVE -> ALLOW.", latency
+                else:
+                    return "BLOCK", f"{err_msg}. Ambiguous ML score={ml_score:.3f}. STRICT -> Fail-Safe BLOCK.", latency

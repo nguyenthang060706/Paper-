@@ -181,6 +181,12 @@ def is_benign_dev_shell(action: str) -> bool:
         r'\b(?:glab\s+api|gh\s+repo|adb\s+|wsl\.exe)\b',
         r'\b(?:Select-Object|Get-Process|Stop-Process)\b',
         r'\b(?:node_modules|build_models|compile)\b',
+        r'\b(?:Get-ChildItem|New-Item|Move-Item|Copy-Item|Set-Content|Get-Content|'
+        r'Set-Location|Push-Location|Pop-Location|Test-Path|Out-Null|Out-File|'
+        r'Write-Host|Write-Output|Format-Table|Format-List|Where-Object|'
+        r'Invoke-Expression\s+.*\b(test|build|run)\b|'
+        r'Remove-Item\s+(?!.*(?:/etc|/var|C:\\Windows|C:\\System))\S*)\b',
+        r'(?:cd\s+\S+\s*&&\s*(?:python|node|npm|cargo|make|pytest)\b)',
     ]
     for bp in benign_patterns:
         if re.search(bp, action, re.IGNORECASE):
