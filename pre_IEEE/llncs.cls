@@ -44,7 +44,9 @@
 \def\@email{}
 \def\email#1{\gdef\@email{#1}}
 \def\@keywords{}
-\def\keywords#1{\gdef\@keywords{#1}}
+\def\keywords#1{\gdef\@keywords{{\def\and{\unskip\enspace{\rmfamily\textbf{\textperiodcentered}}\enspace\ignorespaces}#1}}}
+\def\titlerunning#1{\gdef\@titlerunning{#1}}
+\def\authorrunning#1{\gdef\@authorrunning{#1}}
 
 \renewcommand{\maketitle}{%
   \begin{center}%

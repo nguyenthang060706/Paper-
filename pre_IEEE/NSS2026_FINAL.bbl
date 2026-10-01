@@ -1,0 +1,114 @@
+\begin{thebibliography}{10}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\providecommand{\doi}[1]{https://doi.org/#1}
+
+\bibitem{agentharm2024}
+Andriushchenko, M., et~al.: {AgentHarm}: A benchmark for measuring harmfulness
+  of {LLM} agents. arXiv preprint arXiv:2410.09024  (2024)
+
+\bibitem{axelsson2000base}
+Axelsson, S.: The base-rate fallacy and the difficulty of intrusion detection.
+  ACM Transactions on Information and System Security (TISSEC)  \textbf{3}(3),
+  186--205 (2000)
+
+\bibitem{agentdojo2024}
+Debenedetti, E., Zhang, J., Balunovi{\'c}, M., Beurer-Kellner, L., Fischer, M.,
+  Tram{\`e}r, F.: {AgentDojo}: A dynamic environment to evaluate prompt
+  injection attacks and defenses for {LLM} agents. In: Advances in Neural
+  Information Processing Systems (NeurIPS). vol.~37, pp. 1--25 (2024)
+
+\bibitem{dempster1967upper}
+Dempster, A.P.: Upper and Lower Probabilities Induced by a Multivalued Mapping.
+  The Annals of Mathematical Statistics (1967)
+
+\bibitem{bipia2024}
+Deng, J., et~al.: Benchmarking indirect prompt injection attacks in {LLMs}.
+  arXiv preprint arXiv:2312.14197  (2023)
+
+\bibitem{greshake2023not}
+Greshake, K., Abdelnabi, S., Mishra, S., Endres, C., Holz, T., Fritz, M.: Not
+  what you've signed up for: Compromising real-world {LLM}-integrated
+  applications with indirect prompt injection. In: Proceedings of the 16th ACM
+  Workshop on Artificial Intelligence and Security (AISec). pp. 139--150 (2023)
+
+\bibitem{hutchins2011killchain}
+Hutchins, E.M., Cloppert, M.J., Amin, R.M.: Intelligence-driven computer
+  network defense informed by analysis of adversary campaigns and intrusion
+  kill chains. In: Proceedings of the 6th International Conference on
+  Information Warfare and Security (ICIW). pp. 113--125 (2011)
+
+\bibitem{kittler1998combining}
+Kittler, J., Hatef, M., Duin, R.P.W., Matas, J.: On combining classifiers. IEEE
+  Transactions on Pattern Analysis and Machine Intelligence  \textbf{20}(3),
+  226--239 (1998)
+
+\bibitem{liu2024safeharness}
+Lin, X., Liu, Y., Chen, Y., Wu, Y., Ning, Y., Liu, Y., Sun, N., Zhang, S.,
+  Chong, B., Zhou, C., Cao, Y., Guo, L.: {SafeHarness}: Lifecycle-integrated
+  security architecture for {LLM}-based agent deployment. arXiv preprint
+  arXiv:2604.13630  (2026)
+
+\bibitem{liu2024promptinjection}
+Liu, Y., Jia, Y., Geng, R., Jia, J., Gong, N.Z.: Prompt injection attack
+  against {LLM}-integrated applications. In: Proceedings of the ACM Web
+  Conference (WWW). pp. 1560--1571 (2024)
+
+\bibitem{luhn1960mod10}
+Luhn, H.P.: Computer for verifying numbers (1960), uS Patent 2,950,048
+
+\bibitem{llamafirewall2024}
+{Meta AI}: {LlamaFirewall and PromptGuard-86M Model Card}.
+  \url{https://huggingface.co/meta-llama/Prompt-Guard-86M} (2024)
+
+\bibitem{llmail2024}
+{Microsoft}: {LLMail-Inject Challenge: Benchmarking Indirect Prompt Injection
+  in Email Assistants}.
+  \url{https://huggingface.co/datasets/microsoft/llmail-inject-challenge}
+  (2024)
+
+\bibitem{nist2023}
+{National Institute of Standards and Technology}: {Artificial Intelligence Risk
+  Management Framework (AI RMF 1.0)}. Tech. Rep. NIST AI 100-1, NIST (2023).
+  \doi{10.6028/NIST.SP.1270}
+
+\bibitem{owasp2023}
+{OWASP Foundation}: {OWASP Top 10 for Large Language Model Applications}.
+  \url{https://owasp.org/www-project-top-10-for-large-language-model-applications/}
+  (2023)
+
+\bibitem{perez2022red}
+Perez, E., Huang, S., Song, F., Cai, T., Ring, R., Aslanides, J., Glaese, A.,
+  McAleese, N., Irving, G.: Red teaming language models with language models.
+  In: Proceedings of the Conference on Empirical Methods in Natural Language
+  Processing (EMNLP). pp. 3419--3448 (2022)
+
+\bibitem{protectai2024}
+{Protect AI}: {DeBERTa-v3-base Prompt Injection Classifier}.
+  \url{https://huggingface.co/protectai/deberta-v3-base-prompt-injection}
+  (2024)
+
+\bibitem{wu2024autogen}
+Wu, Q., Bansal, G., Zhang, J., Wu, Y., Li, B., Zhu, E., Jiang, L., Zhang, X.,
+  Zhang, S., Liu, J., Awadallah, A.H., White, R.W., Burger, D., Wang, C.:
+  {AutoGen}: Enabling next-gen {LLM} applications via multi-agent conversation.
+  In: Proceedings of the International Conference on Learning Representations
+  (ICLR) (2024)
+
+\bibitem{yao2023react}
+Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., Cao, Y.:
+  {ReAct}: Synergizing reasoning and acting in language models. In: Proceedings
+  of the International Conference on Learning Representations (ICLR) (2023)
+
+\bibitem{zhan2025injecagent}
+Zhan, Q., Fang, R., Bindu, R., Gupta, A., Cheng, Q., Kang, D.: {InjecAgent}:
+  Benchmarking indirect prompt injections in tool-integrated large language
+  model agents. In: Findings of the Association for Computational Linguistics
+  (ACL). pp. 15421--15440 (2024)
+
+\bibitem{datasentinel2025}
+Zhang, Z., et~al.: {DataSentinel}: Robust input guardrails for autonomous {LLM}
+  agents via minimax game formulation. In: Proceedings of the IEEE Symposium on
+  Security and Privacy (S\&P) (2025)
+
+\end{thebibliography}

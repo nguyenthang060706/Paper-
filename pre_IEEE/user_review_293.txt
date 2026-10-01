@@ -1,0 +1,754 @@
+<USER_REQUEST>
+1. Kết luận tổng quan
+
+Paper hiện tại có nền tảng tốt và hình thức đã gần đạt yêu cầu NSS, nhưng chưa nên nộp ngay.
+
+Điểm mình đánh giá:
+
+Hạng mục	Đánh giá
+Phù hợp chủ đề NSS	🟢 Tốt
+Format / presentation	🟢 Tốt
+Research problem	🟢 Tốt
+Threat model	🟢 Tốt
+Novelty	🟡 Khá, cần làm sắc hơn
+Methodology	🟡 Khá
+Experimental design	🟡 Khá
+Experimental credibility	🟠 Cần kiểm tra kỹ
+Mathematical/formal claims	🟠 Có lỗi cần sửa
+Baseline comparison	🟠 Cần thận trọng
+Reproducibility	🟡 Khá nhưng thiếu một số chi tiết
+Overall	Khá tốt nhưng cần revision trước submission
+2. Format NSS: ĐẠT
+
+Paper có:
+
+14 trang PDF.
+Single-column.
+LNCS-style.
+Anonymous Author(s).
+Không có affiliation thật.
+English.
+Có Abstract, Keywords, Introduction, Related Work, Methodology, Experiments, Discussion, Conclusion, References.
+
+Điều này phù hợp yêu cầu NSS 2026: full paper 12–15 trang, single-column LNCS và anonymous.
+
+→ Về hình thức: không phải vấn đề lớn.
+
+3. Research problem: TỐT
+
+Paper xác định vấn đề khá rõ:
+
+LLM agent nhận dữ liệu bên ngoài → dữ liệu có thể chứa instruction độc hại → agent không phân biệt được instruction và data.
+
+Paper sau đó chia vấn đề thành:
+
+Stateless ingress defense
+Không có egress remediation
+Multi-signal fusion / signal explosion
+
+Đây là cách xây dựng problem khá tốt.
+
+Threat model cũng tương đối rõ với:
+
+A1: Indirect Instruction Embedding
+A2: Structural Masquerading
+A3: Post-Task Hijacking / Exfiltration.
+
+→ Phần này nên giữ.
+
+4. Research gap: KHÁ TỐT
+
+Điểm mình thích là paper không chỉ nói:
+
+"Existing methods are not good."
+
+Mà đưa ra 3 gap cụ thể:
+
+Stateless ingress.
+Không xử lý tool-return/egress.
+Multi-detector có thể tạo redundant signals.
+
+Sau đó paper đưa ra giải pháp tương ứng:
+
+Gap → Solution
+
+Instruction/data confusion → InstructionBoundaryDetector
+Communication-channel IPI → EmailVectorDetector
+Signal explosion → Family-Based Voting
+Contaminated tool output → ContextSanitizer
+Sensitive information leakage → DataRedactor.
+
+→ Đây là một trong những phần tốt nhất của paper.
+
+5. Novelty: KHÁ, nhưng cần làm rõ hơn
+
+Đây là điểm reviewer có thể hỏi:
+
+"What is actually novel here?"
+
+Paper hiện có rất nhiều components, nhưng reviewer có thể cảm giác:
+
+"Đây là một hệ thống ghép nhiều detector lại với nhau."
+
+Đó là rủi ro.
+
+Novelty thực sự nên tập trung vào 2 ý chính:
+
+Novelty 1 — Semantic Boundary Enforcement
+
+Không đơn thuần classify:
+
+malicious / benign
+
+mà xác định:
+
+instruction xuất hiện trong một vùng dữ liệu vốn không có quyền điều khiển agent.
+
+Đây là ý tưởng đáng nhấn mạnh.
+
+Novelty 2 — Family-Based Multi-Signal Aggregation
+
+Thay vì cộng tất cả signal:
+
+signal1 + signal2 + signal3 + ...
+
+paper gom thành:
+
+Structural Family
+Behavioral Family
+
+sau đó max-pooling trong family.
+
+Đây mới là phần có khả năng tạo ra contribution mang tính phương pháp.
+
+→ Không nên quảng bá novelty là "8-layer architecture".
+
+Nên nhấn mạnh:
+
+semantic boundary enforcement + family-based signal aggregation for data-channel IPI
+
+6. Methodology: Khá tốt
+
+Architecture khá đầy đủ:
+
+A Lexical Filter
+        ↓
+B Session Correlation
+        ↓
+C ML + LLM Judge
+        ↓
+D Boundary Detector
+        ↓
+E Email Detector
+        ↓
+F Voting Aggregator
+        ↓
+G Context Sanitizer
+        ↓
+H Data Redactor
+
+Figure 1 thể hiện architecture khá rõ.
+
+Đặc biệt Layer D có methodology tương đối cụ thể:
+
+JSON parser
+XML parser
+Email parser
+imperative patterns
+position ratio
+confidence calculation.
+
+→ Đây không còn là ý tưởng chung chung; đã có implementation-level description.
+
+7. Nhưng phần mathematical formulation có 2 lỗi quan trọng
+❌ Lỗi 1 — O1 không khớp với metric
+
+Paper viết:
+
+β(x) = 1 nếu data payload chứa instruction.
+
+Sau đó:
+
+ε = 0.1056 = complement của 89.44% Session-level ABSR.
+
+Vấn đề là:
+
+β(x) là payload-level
+
+nhưng
+
+89.44% là session-level ABSR.
+
+Hai đơn vị đo khác nhau.
+
+Nếu O1 là payload/attack-level thì nên dùng:
+
+ε = 1 - ABSR
+
+Nếu muốn dùng Session ABSR thì phải định nghĩa:
+
+β(S) = 1
+
+ở session level.
+
+Đây là lỗi reviewer có thể bắt.
+8. ❌ Lỗi 2 — O3 hiện chưa thực sự được chứng minh
+
+Paper tuyên bố:
+
+adding a signal never lowers the aggregate score.
+
+Nhưng Equation 5 là:
+
+$$ Score_{agg} = \frac{1}{|F_{active}|} \sum_{f \in F_{active}} \max_{\sigma \in f}(s_\sigma\gamma_\sigma) $$
+
+Nếu thêm một family mới có score thấp, mẫu số tăng.
+
+Ví dụ:
+
+Family A = 90
+
+Score:
+
+90
+
+Thêm:
+
+Family B = 20
+
+Score:
+
+(90 + 20)/2 = 55
+
+→ Score giảm.
+
+Vì vậy claim:
+
+"additional corroborating anomaly signals from independent families do not decrease the assigned threat tier"
+
+không tự động suy ra từ Equation 5.
+
+Đây là một lỗi technical đáng sửa.
+
+Cách sửa
+
+Hoặc:
+
+sửa aggregation formula để thật sự monotonic;
+
+hoặc
+
+bỏ claim "monotonic guarantee";
+
+hoặc
+
+chứng minh monotonicity trên decision tier thay vì raw score.
+
+Đây là lỗi mình xếp mức CRITICAL.
+
+9. AgentDojo evaluation: Có điểm tốt nhưng cần làm rõ
+
+Paper ghi:
+
+629 base security cases
+× 3 random seeds
+× 3 environment variants
+= 5,661 execution traces
+
+→ 29,038 operational records
+→ 21,825 sessions
+
+Cách giải thích này tốt hơn nhiều so với việc chỉ ghi "29,038 AgentDojo cases".
+
+Và nguồn AgentDojo hiện được mô tả rộng rãi là benchmark gồm các user tasks và security cases trong các môi trường tool-using agent.
+
+Tuy nhiên phải cực kỳ rõ:
+
+29,038 không phải native size của AgentDojo.
+
+Đó là:
+
+AgentDojo-derived evaluation corpus
+
+do nhóm tạo ra qua repeated executions.
+
+Paper hiện đã bắt đầu làm đúng điều này ở phần methodology, nhưng Abstract vẫn viết:
+
+"full AgentDojo benchmark spanning 29,038 operational records..."
+
+Nên sửa.
+
+Thành:
+
+"an AgentDojo-derived corpus containing 29,038 operational records across 21,825 sessions"
+
+Cách này chính xác hơn.
+
+10. Có một điểm số liệu cần giải thích thêm
+
+Paper nói:
+
+15,104 malicious
+13,934 benign
+= 29,038
+
+Đúng.
+
+Nhưng sau đó:
+
+13,876 intercepted attacks
+
+và phân bổ:
+
+11,770 Layer A
+1,059 Layer C
+311 LLM Judge
+127 Kill-Chain
+609 D-F
+= 13,876
+
+Các con số cộng lại đúng.
+
+Nhưng:
+
+13,876 intercepted attacks ≠ 84.31% × 15,104
+
+Do đó reviewer có thể hỏi:
+
+"What exactly does 'intercepted attack' mean, and why is its denominator different from ABSR?"
+
+Cần định nghĩa rõ:
+attack attempt
+malicious record
+blocked attack
+intercepted attack
+successful attack
+session-level attack
+
+Nếu không giải thích, Table 2 dễ bị nghi ngờ.
+
+11. Baseline comparison: Đây là điểm nhạy cảm
+
+Paper so sánh:
+
+PromptGuard
+ProtectAI
+SafeHarness
+Proposed.
+
+Điểm tốt là paper không giả vờ SafeHarness là reproduction chính xác.
+
+Bạn đã ghi:
+
+"re-implementation"
+
+và:
+
+"should be interpreted as an evaluation of the architectural approach rather than a direct head-to-head benchmark."
+
+Đây là cách viết rất tốt.
+
+Nhưng vẫn nên sửa claim:
+
+Hiện Abstract:
+
+"3.39× higher Session-level ABSR than SafeHarness"
+
+Không sai về phép tính nếu dùng số trong Table 2:
+
+89.44 / 26.40 ≈ 3.39.
+
+Nhưng vì SafeHarness là re-implementation, nên nên viết:
+
+"3.39× higher Session-level ABSR than our re-implementation of SafeHarness under the same evaluation protocol."
+
+Điều này chặt chẽ hơn.
+
+12. Không nên gọi là "State-of-the-art"
+
+Trong bản hiện tại mình không thấy bạn còn dùng trực tiếp "state-of-the-art" trong Abstract, đây là một điểm tốt.
+
+Nên tiếp tục tránh:
+
+SOTA
+
+best defense
+
+superior to all existing methods
+
+guarantees security
+
+Nếu không có benchmark comparison rộng hơn.
+
+13. Ablation study: Tốt
+
+Đây là một trong những phần thuyết phục nhất.
+
+Ví dụ:
+
+Bỏ D–E
+
+ABSR:
+
+84.31 → 79.59
+Bỏ G
+84.31 → 81.12
+Bỏ F
+
+FPR:
+
+8.41 → 12.10
+Bỏ H
+
+LeakPII:
+
+0 → 3.72%
+
+Điều này cho reviewer thấy mỗi nhóm component có vai trò khác nhau, thay vì chỉ dựng một architecture rất lớn.
+
+→ Nên giữ nguyên phần này.
+
+14. Nhưng có một lỗi presentation về latency
+
+Paper có:
+
+Fast path = 17.61 ms
+Escalated path = 404.58 ms
+
+Đây là hợp lý về mặt cách trình bày.
+
+Nhưng Figure 1 ghi Layer C:
+
+1.35 ms
+
+Trong Table 3 lại:
+
+RF Ensemble = 11.25 ms.
+
+→ Đây là inconsistency cần sửa.
+
+Reviewer có thể hỏi:
+
+Why does Layer C have 1.35 ms in Figure 1 but 11.25 ms in the latency breakdown?
+
+Phải thống nhất.
+
+15. Layer H cũng có một inconsistency
+
+Paper viết:
+
+DataRedactor executes 8-stage masking
+
+nhưng sau đó liệt kê:
+
+PEM keys
+generic secrets
+API keys
+credit cards
+email/phone
+Shannon entropy
+
+→ chỉ thấy 6 nhóm.
+
+Nếu thực sự có 8 stages thì phải liệt kê đủ.
+
+Nếu không:
+
+"six-stage masking pipeline"
+
+hoặc:
+
+"eight detection patterns"
+
+tùy implementation thực tế.
+
+16. Red-team: Tốt
+
+20 scenarios được chia thành:
+
+Syntax & Steganography
+Structural Container Injection
+Delimiter Boundary Breakout
+Email Channel Hijacking
+Egress Data Leak
+Multi-Step State Escalation
+Semantic Goal Reframing
+
+và:
+
+19 / 20
+95%
+
+Đặc biệt S20 bị fail nhưng được công khai, đây là điểm tốt.
+
+Paper giải thích:
+
+semantic paraphrasing không có imperative verbs → LLM Judge score 0.43 → dưới threshold 0.45.
+
+Đừng xóa S20.
+
+Reviewer thường đánh giá cao việc paper thừa nhận failure mode.
+
+17. Nhưng red-team cần thêm thông tin
+
+Reviewer có thể hỏi:
+
+20 attack này có được dùng trong development/tuning không?
+
+Nếu threshold được tuning dựa trên S1–S20 thì 95% không còn là true unseen evaluation.
+
+Nên ghi rõ:
+
+The 20 red-team scenarios were constructed after
+freezing all detection rules and thresholds.
+
+chỉ nếu điều này thực sự đúng.
+
+Nếu không đúng thì phải mô tả đúng quy trình.
+
+18. Claim về "model agnostic" hơi mạnh
+
+Paper viết:
+
+architecture generalizes across GPT-4o, Claude, Llama-3.1-70B without retraining.
+
+Nhưng paper chưa thực nghiệm trên các model đó.
+
+Vì vậy đây nên là:
+
+architecturally model-agnostic
+
+chứ không nên nói:
+
+generalizes across different LLM backbones
+
+như một kết quả thực nghiệm.
+
+Nên sửa thành:
+
+"The non-LLM components are architecturally model-agnostic and do not require model-specific retraining."
+
+An toàn hơn.
+
+19. O2 cũng đang dùng từ quá mạnh
+
+Paper nói:
+
+Tegress(o) ∩ SPII = ∅
+
+tức là không có sensitive information nào lọt vào context.
+
+Nhưng DataRedactor chỉ detect dựa trên:
+
+regex
+Luhn
+entropy
+known secret patterns.
+
+Do đó không thể kết luận tuyệt đối:
+
+no sensitive tokens can reach context
+
+mà nên viết:
+
+"the implemented redaction patterns aim to prevent matched sensitive entities from reaching the model context."
+
+Vì attacker có thể dùng dạng chưa được detect.
+
+20. Related Work: Ổn nhưng hơi yếu về positioning
+
+Related Work hiện có:
+
+Prompt Injection
+AgentDojo
+PromptGuard
+ProtectAI
+SafeHarness
+DataSentinel
+IDS multi-signal.
+
+Nhưng phần này vẫn thiên về:
+
+"Existing X does this, ours does Y."
+
+Nên thêm một đoạn explicit research gap paragraph ở cuối Related Work:
+
+Existing defenses primarily operate at...
+However, they do not jointly address...
+This motivates our research question...
+
+Như vậy reviewer sẽ nhìn thấy contribution rõ hơn.
+
+21. Research question hiện chưa được viết thành Research Question
+
+Paper có problem và contributions nhưng chưa thực sự đưa ra:
+
+RQ1 / RQ2 / RQ3
+
+Mình khuyên thêm 2–3 RQ:
+
+RQ1:
+Can semantic boundary enforcement improve resistance to data-channel IPI beyond stateless ingress classification?
+
+RQ2:
+Does family-based multi-signal aggregation reduce false positives compared with linear signal fusion?
+
+RQ3:
+Can egress sanitization reduce sensitive-information persistence even when ingress defenses fail?
+
+Sau đó:
+
+RQ1 → Table 2 + D/E ablation
+RQ2 → Layer F ablation
+RQ3 → LeakPII
+
+→ Paper sẽ có logic nghiên cứu mạnh hơn rất nhiều.
+
+22. References: Khá ổn
+
+Có các nguồn quan trọng:
+
+AgentDojo
+Greshake
+InjecAgent
+PromptGuard
+SafeHarness
+DataSentinel
+NIST
+OWASP.
+
+Tuy nhiên trước submission nên kiểm tra:
+
+title chính xác;
+venue chính xác;
+year;
+page number;
+DOI;
+arXiv vs peer-reviewed version.
+
+Đặc biệt các reference dạng HuggingFace/model card/dataset nên phân biệt rõ với academic publication.
+
+23. Một điểm rất quan trọng: contribution hơi nhiều
+
+Hiện paper có:
+
+8-layer architecture
+InstructionBoundaryDetector
+EmailVectorDetector
+VotingAggregator
+ContextSanitizer
+DataRedactor
+ML ensemble
+LLM Judge
+session correlation
+lexical filter...
+
+Reviewer có thể hỏi:
+
+"What is the central scientific contribution?"
+
+Đây là rủi ro lớn hơn việc thiếu component.
+
+Mình đề xuất paper tự định vị như sau:
+
+The central contribution is a semantic-boundary and family-based aggregation framework for detecting and containing indirect prompt injection in autonomous LLM agents.
+
+Các layer còn lại trở thành:
+
+supporting mechanisms.
+
+Như vậy paper nhìn giống research paper, thay vì engineering system report.
+
+24. Điểm mình đánh giá cao nhất
+
+Nếu phải chọn 3 điểm mạnh:
+
+🟢 1. Problem rất phù hợp security
+
+IPI + autonomous agent + external data + tool execution.
+
+🟢 2. Có experimental evidence tương đối đầy đủ
+
+Không chỉ có một accuracy:
+
+ABSR
+Session ABSR
+FPR
+steady-state FPR
+TCR
+latency
+LeakPII
+ablation
+red-team.
+🟢 3. Có failure analysis
+
+S20 là một điểm rất tốt:
+
+hệ thống không hoàn hảo và paper giải thích tại sao.
+
+25. 5 lỗi mình cho là quan trọng nhất
+
+Nếu bạn chỉ có thời gian sửa 5 thứ, sửa theo thứ tự này:
+
+🔴 1. Sửa O3
+
+Equation 5 hiện không đảm bảo monotonicity như claim.
+
+🔴 2. Sửa O1
+
+Session-level ABSR không nên trực tiếp dùng làm ε cho payload-level β(x).
+
+🔴 3. Làm rõ 13,876 intercepted attacks
+
+Phải giải thích quan hệ giữa:
+
+29,038 records
+15,104 malicious records
+13,876 intercepted attacks
+84.31% ABSR
+89.44% session ABSR
+🔴 4. Sửa AgentDojo wording
+
+Không viết:
+
+"full AgentDojo benchmark spanning 29,038 records"
+
+Nên:
+
+"AgentDojo-derived evaluation corpus containing 29,038 operational records..."
+
+🔴 5. Sửa baseline/claim
+
+SafeHarness là re-implementation, nên mọi claim 3.39× phải ghi rõ điều kiện đó.
+
+26. Các lỗi nhỏ hơn
+
+Sau 5 lỗi trên:
+
+🟠 Figure 1 latency Layer C không khớp Table 3.
+
+🟠 "8-stage masking" nhưng phần mô tả chỉ liệt kê 6 nhóm.
+
+🟠 Không nên claim empirical generalization sang GPT-4o/Claude/Llama nếu chưa test.
+
+🟠 O2 không nên diễn đạt như absolute guarantee.
+
+🟠 "Security guarantees" nên đổi thành security objectives / invariants.
+
+🟠 Related Work nên có một đoạn research-gap rõ ràng.
+
+🟠 Thêm RQ1–RQ3 sẽ làm paper logic hơn.
+
+🟠 Cần ghi rõ red-team có unseen after threshold tuning hay không.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-09-28T23:16:32+07:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\ADMIN\jupyternotebook\EVO_PCA\pre_IEEE\ispec_page.html (LANGUAGE_HTML)
+Cursor is on line: 1
+Other open documents:
+- c:\Users\ADMIN\jupyternotebook\EVO_PCA\pre_IEEE\NSS2026_FINAL.tex (LANGUAGE_LATEX)
+- c:\Users\ADMIN\jupyternotebook\EVO_PCA\pre_IEEE\ispec_page.html (LANGUAGE_HTML)
+No browser pages are currently open.
+</ADDITIONAL_METADATA>
